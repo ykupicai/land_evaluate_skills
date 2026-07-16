@@ -61,6 +61,12 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
 (match_parcels)取幾何——本機 `地籍圖資/` 是舊快照,僅供③擷取周邊地籍/功能分區。
 多案場清冊:選取分組=(縣市/鄉鎮/段/小段),下載後建**段+地號複合鍵** sitemap
 (跨縣市清冊同地號會跨案場,純地號鍵會分錯家;`load_sitemap` 支援 段/小段 欄)。
+**⚠️ sitemap 必含「段」欄(2026-07-16 東石實錯)**:同一鄉鎮跨段重複地號(魚塭區常見)
+會讓 load_sitemap 移除衝突純地號鍵;csv 無段欄=複合鍵建不出→該地號分派失敗,
+單筆案場會**整案無聲消失**(引擎只緩衝一句警告,05 清單看不到)。案場若由幾何聚類
+產生(清冊無分基地欄),用 `大量圖資轉換工具/scripts/rebuild_sitemap_spatial.py`
+以 fishpv sites.shp 為權威重建帶段欄 sitemap。**sitemap 閘門必須驗「實際餵給
+make_maps 的那一份檔案」**——fishpv 前置步驟可能覆寫 sitemap.csv,驗過≠餵入的那份。
 多重地籍選取(=`batch_driver.js`)→ 收尾(=`finalize_download.js`:定位→匯Excel→建主題
 →加入一次→下載)。
 **交接約定**:把下載的 zip 與匯出的 Excel **存成同一個 basename**(下一段靠同檔名自動配對)。
