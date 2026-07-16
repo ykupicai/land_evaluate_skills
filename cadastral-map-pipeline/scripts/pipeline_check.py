@@ -57,7 +57,15 @@ def cmd_join(a):
     for c in ("20251201_4", "20251201_6", "20251201_7"):
         if c not in g.columns:
             fail(f"缺 trust 欄 {c}——area_join 未帶 --trust-fields,重跑加上該旗標")
-    ok(f"join:{n}/{n} 全數帶屬性,trust 欄齊")
+    # 等面積組會讓 nearest-join 重複配對:同(段,地號) 出現兩次=有 xls 列沒人領(2026-07-16 東石實案)
+    segcol = "地段名稱" if "地段名稱" in g.columns else "20251201_3"
+    dup = g[g.duplicated([segcol, "地號"], keep=False)]
+    if len(dup):
+        pairs = dup.groupby([segcol, "地號"]).size()
+        fail(f"{len(dup)} 筆重複地號指派(等面積宗地 join 撞號):\n{pairs.to_string()}\n"
+             f"處置:對等面積組用平台 CADA 圖徵服務查真實質心改派(登入態下,"
+             f"見 shp-xls-area-join skill「等面積宗地」章節),不要用 tol 硬調")
+    ok(f"join:{n}/{n} 全數帶屬性,trust 欄齊,地號無重複指派")
 
 
 def cmd_sitemap(a):

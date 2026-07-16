@@ -82,6 +82,10 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
 全國性清冊強烈建議 `pipeline_check.py spatial <joined.shp>`(質心×本機地籍抓 join 錯接)。
 
 ### ③ 批次出圖 → 用 `parcel-map-sheet`（經 make_maps --layout maxmap）
+**單一案場含臨路判定的標準走法**:`run_case.py --shp <②的joined.shp> --case <案名>`
+(首跑:fishpv 臨路→總區位圖→停點)→ 再加 `--mode single --layout maxmap` 出六主題。
+⚠️ **`--shp` 一律給絕對路徑**——fishpv 在漁電專案 cwd 下執行,相對路徑會 No such file
+(2026-07-16 實踩)。fishpv 失敗會降級續跑(圖6標失敗、其餘照出),先排除再重跑 `--from fishpv`。
 在 `大量圖資轉換工具/` 下,把基地(＋周邊/功能分區)備進案場結構後:
 ```powershell
 & "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" scripts\make_maps.py <案名> --layout maxmap

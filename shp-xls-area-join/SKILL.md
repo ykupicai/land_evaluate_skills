@@ -90,6 +90,22 @@ little instead, and only as much as needed.
 - **Empty 所有權人 is real data,** not a join miss — private parcels often leave the
   owner blank in the source XLS.
 
+## 等面積宗地(漁電魚塭常見!)——面積 join 的原理性盲區
+
+分割出的等面積宗地(如三塊厝新段 887-1/2/3 同為 2607.22 m²)nearest-join 會**重複配對**
+(同地號指兩個 polygon、有 xls 列沒人領),且幾何面積 vs 向量面積的內部一致性檢查**驗不出來**。
+2026-07-16 東石案實測:9 筆等面積中 4 筆被打亂。**唯一可靠解法=趁平台登入態查 CADA
+圖徵服務真實幾何改派**:
+
+```js
+// TCDGIS 頁內(登入態):以 14 碼 ID(地所2+段4+母4+子4,如 QB145808870001)查真實幾何
+var qt=new esri.tasks.QueryTask(responseObject.SearchLayers.CADA+'?token='+layerToken);
+var q=new esri.tasks.Query(); q.returnGeometry=true; q.where="ID in ('QB145808870001','...')";
+qt.execute(q, cb)  // cb 由 rings 算質心回傳 {id,cx,cy}
+```
+本機以「真值質心 contains 於哪個 polygon」改派地號。join 後一律跑
+`cadastral-map-pipeline/scripts/pipeline_check.py join`(已含重複地號檢查)擋下此問題。
+
 ## Output rules
 
 - Preserve the source CRS from its `.prj` (these files are TWD97 TM2 / EPSG:3826). If
