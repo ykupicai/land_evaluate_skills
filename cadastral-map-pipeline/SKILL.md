@@ -63,10 +63,10 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
 (跨縣市清冊同地號會跨案場,純地號鍵會分錯家;`load_sitemap` 支援 段/小段 欄)。
 **⚠️ sitemap 必含「段」欄(2026-07-16 東石實錯)**:同一鄉鎮跨段重複地號(魚塭區常見)
 會讓 load_sitemap 移除衝突純地號鍵;csv 無段欄=複合鍵建不出→該地號分派失敗,
-單筆案場會**整案無聲消失**(引擎只緩衝一句警告,05 清單看不到)。案場若由幾何聚類
-產生(清冊無分基地欄),用 `大量圖資轉換工具/scripts/rebuild_sitemap_spatial.py`
-以 fishpv sites.shp 為權威重建帶段欄 sitemap。**sitemap 閘門必須驗「實際餵給
-make_maps 的那一份檔案」**——fishpv 前置步驟可能覆寫 sitemap.csv,驗過≠餵入的那份。
+單筆案場會**整案無聲消失**(引擎只緩衝一句警告,05 清單看不到)。清冊無分基地欄時
+一律走 ②b 的 `build_sites_sitemap.py`(產出即帶段欄);歷史案的無段欄 sitemap 可用
+`rebuild_sitemap_spatial.py` 以既有 sites.shp 為權威補救。**sitemap 閘門必須驗「實際
+餵給 make_maps 的那一份檔案」**——驗過≠餵入的那份(東石事故:後置步驟覆寫了驗過的檔)。
 多重地籍選取(=`batch_driver.js`)→ 收尾(=`finalize_download.js`:定位→匯Excel→建主題
 →加入一次→下載)。
 **交接約定**:把下載的 zip 與匯出的 Excel **存成同一個 basename**(下一段靠同檔名自動配對)。
@@ -86,6 +86,26 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
 **🚧 閘門**:`pipeline_check.py join <joined.shp>`;多案場再加
 `pipeline_check.py sitemap <joined.shp> --sitemap <csv>`(段+地號 100% 命中才准進③);
 全國性清冊強烈建議 `pipeline_check.py spatial <joined.shp>`(質心×本機地籍抓 join 錯接)。
+
+### ②b 案場定義(多案場清冊必做;2026-07-16 縮編定案)
+**案場定義權在產線,不在 fishpv。** fishpv 只當純臨路計算器(吃逐案 shp、吐臨路狀態),
+不再自己聚類定義案場、不再產 sitemap——避免「聚類真相在外部工具、產線拿到失真副本」
+(東石 S012 整案消失的結構性根因)。
+
+- 清冊**有**分基地欄(如清潔隊):照舊從清冊建帶段欄 sitemap。
+- 清冊**無**分基地欄(如東石,一份清冊=一堆相鄰宗地群):
+  ```powershell
+  python scripts\build_sites_sitemap.py --joined <②joined.shp> --out-dir <案>\案場定義
+  ```
+  相鄰宗地連通分量聚類(--gap 預設 0=須相鄰),產 `案場定義/sitemap.csv`(帶段欄)+
+  `sites.shp`;編號北→南確定性(重跑不變),`--match-sites` 可沿用歷史編號。
+- **先過 sitemap 閘門**(對 案場定義/sitemap.csv),再拆逐案 shp 餵 fishpv:
+  ```powershell
+  python scripts\split_shp_persite.py --joined <joined.shp> --sitemap <案>\案場定義\sitemap.csv --out-dir <案>\臨路評估_percase
+  .\scripts\run_fishpv_percase.ps1 -Base <案>\臨路評估_percase   # 合併:merge_fishpv_percase.py
+  ```
+- run_case 的 digest 會**優先複製 案場定義/sitemap.csv** 給出圖;無案場定義且成果.xlsx
+  反推出跨案場重複地號時會硬停並指路本步驟(不再無聲寫出無段欄 sitemap)。
 
 ### ③ 批次出圖 → 用 `parcel-map-sheet`（經 make_maps --layout maxmap）
 **單一案場含臨路判定的標準走法**:`run_case.py --shp <②的joined.shp> --case <案名>`
@@ -118,14 +138,13 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
   多對 (案場ID,名稱),基地列/幾何在每個案場都收一份,兩邊各自出圖。
 - **成品圖依案場分資料夾**(使用者定案 2026-07-16):多案場清冊出圖後把 `圖檔_maxmap/`
   重整為 `<案場ID>_<案場名稱>/<主題>.png` 並同步改寫 05 清單檔名欄——跑
-  `scripts/reorg_sheets_persite.py`(make_maps 本身仍寫攤平檔,出圖完跑重整;
-  腳本內 BASE 路徑改成本案 outputs 目錄)。
+  `python scripts\reorg_sheets_persite.py <案outputs目錄>`(make_maps 本身仍寫攤平檔,
+  出圖完跑重整;2026-07-16 起吃參數、案場ID 支援英數如 S012,不必再改腳本)。
 - **多案場批次的臨路判定/正射時間帳**:臨路判定每案要外擴 700m 抓 PHOTO2+EMAP2,
   面積是案場框的十餘倍,105 案場約 7hr;純正射(PHOTO2+EMAP)約 1-1.5hr。趕時間先出
-  正射、臨路後補(fishpv 成果與合併檔備妥即可隨時單獨補跑)。fishpv 對全國多案場
-  清冊要**逐案場拆 shp 再跑**(一次餵全清冊會把全國外框當畫布,記憶體爆炸)——
-  逐案驅動 `scripts/run_fishpv_percase.ps1`、合併 `scripts/merge_fishpv_percase.py`
-  (site_id 重編 `<案場ID>-<序>`);make_maps 圖6 已支援依案場範圍過濾宗基地。
+  正射、臨路後補(fishpv 成果與合併檔備妥即可隨時單獨補跑)。fishpv 多案場一律
+  **逐案場拆 shp 再跑**(一次餵全清冊會把全國外框當畫布,記憶體爆炸)——拆檔/驅動/
+  合併走 ②b 的三支腳本;make_maps 圖6 已支援依案場範圍過濾宗基地。
 
 六主題:使用分區、使用地編定、國土功能分區、正射套疊、國土利用調查、臨路判定。前三張只需
 ②的基地＋周邊即可;後三張各需 NLSC WMTS／LUIMAP／fishpv 臨路資料。
