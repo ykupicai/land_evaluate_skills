@@ -86,6 +86,12 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
 (首跑:fishpv 臨路→總區位圖→停點)→ 再加 `--mode single --layout maxmap` 出六主題。
 ⚠️ **`--shp` 一律給絕對路徑**——fishpv 在漁電專案 cwd 下執行,相對路徑會 No such file
 (2026-07-16 實踩)。fishpv 失敗會降級續跑(圖6標失敗、其餘照出),先排除再重跑 `--from fishpv`。
+
+**臨路判定外擴——使用者口語→參數對照**(2026-07-16 定案):
+- 使用者沒提 → 預設:single 外擴700m、persite 不外擴(都仍疊 EMAP2 見周邊路名)
+- 「臨路要外擴」「外擴N公尺」 → `--road-margin=700`(或N)
+- 「臨路不用外擴」 → `--road-margin=0`
+(make_maps 與 run_case 皆吃此旗標;run_case 透傳。)
 在 `大量圖資轉換工具/` 下,把基地(＋周邊/功能分區)備進案場結構後:
 ```powershell
 & "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" scripts\make_maps.py <案名> --layout maxmap
