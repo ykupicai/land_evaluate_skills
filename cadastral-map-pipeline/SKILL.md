@@ -31,6 +31,9 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
   ▼     國土功能分區.csv（分區/原使用分區/原使用地/使用地）→ 餵④第5頁
   │  ② shp-xls-area-join            本機腳本（--trust-fields）
   ▼     帶屬性基地 shp（地號/使分/使類/所有權人…）
+  │  ②b build_sites_sitemap         案場定義（多案場必做）→ 權威 sitemap（帶段欄）
+  ▼  ②c road_access                 臨路評估（產線內建,不再相依 fishpv）
+  │                                 成果.xlsx / sites.shp / features.geojson
   │  ③ make_maps --layout maxmap    QGIS（沿用 parcel-map-sheet 版面）
   ▼     圖檔_maxmap/ 六主題 A4 成果圖 ＋ 05_出圖清單_maxmap
   │  ③b 存 QGZ（★簡報前必做）      <案名>_maxmap.qgz：全部圖層＋每主題 Layout
@@ -44,7 +47,7 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
 - **①的登入**:`ngis.nlma.gov.tw` 帳密＋圖形驗證碼**由使用者本人輸入**(安全規則:agent
   不可代填、不可解驗證碼)。開好登入頁請使用者完成,回覆「好了」再續。
 - **③的環境**:出圖須用 **QGIS 內建 python**(`python-qgis-ltr.bat`);正射套疊/國土利用
-  需連 NLSC WMTS(未快取時)、臨路判定需 fishpv 臨路評估產物。缺資料的主題單張標失敗續跑。
+  需連 NLSC WMTS(未快取時)、臨路判定需 ②c 臨路評估產物。缺資料的主題單張標失敗續跑。
 
 其餘全自動。
 
@@ -98,9 +101,9 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
 `pipeline_check.py sitemap <joined.shp> --sitemap <csv>`(段+地號 100% 命中才准進③);
 全國性清冊強烈建議 `pipeline_check.py spatial <joined.shp>`(質心×本機地籍抓 join 錯接)。
 
-### ②b 案場定義(多案場清冊必做;2026-07-16 縮編定案)
-**案場定義權在產線,不在 fishpv。** fishpv 只當純臨路計算器(吃逐案 shp、吐臨路狀態),
-不再自己聚類定義案場、不再產 sitemap——避免「聚類真相在外部工具、產線拿到失真副本」
+### ②b 案場定義(多案場清冊必做;2026-07-16 定案)
+**案場定義權在產線。** 由聚類直接產帶段欄的權威 sitemap,臨路評估依該分組計算——
+案場幾何與 make_maps 出圖用的完全一致,根除「聚類真相在外部工具、產線拿到失真副本」
 (東石 S012 整案消失的結構性根因)。
 
 - 清冊**有**分基地欄(如清潔隊):照舊從清冊建帶段欄 sitemap。
@@ -110,19 +113,33 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
   ```
   相鄰宗地連通分量聚類(--gap 預設 0=須相鄰),產 `案場定義/sitemap.csv`(帶段欄)+
   `sites.shp`;編號北→南確定性(重跑不變),`--match-sites` 可沿用歷史編號。
-- **先過 sitemap 閘門**(對 案場定義/sitemap.csv),再拆逐案 shp 餵 fishpv:
-  ```powershell
-  python scripts\split_shp_persite.py --joined <joined.shp> --sitemap <案>\案場定義\sitemap.csv --out-dir <案>\臨路評估_percase
-  .\scripts\run_fishpv_percase.ps1 -Base <案>\臨路評估_percase   # 合併:merge_fishpv_percase.py
-  ```
+- **先過 sitemap 閘門**(對 案場定義/sitemap.csv),再算臨路(見下方 ②c)。
 - run_case 的 digest 會**優先複製 案場定義/sitemap.csv** 給出圖;無案場定義且成果.xlsx
   反推出跨案場重複地號時會硬停並指路本步驟(不再無聲寫出無段欄 sitemap)。
+- run_case 的 `roadaccess` 步驟會在 sitemap 不存在時**自動先跑** build_sites_sitemap,
+  故一般走 run_case 不必手動執行本步。
+
+### ②c 臨路評估(產線內建;2026-07-26 起不再相依外部 fishpv)
+```powershell
+& "<QGIS>\bin\python-qgis-ltr.bat" scripts\road_access.py --joined <joined.shp> `
+    --sitemap <案>\案場定義\sitemap.csv --out <案>\臨路評估
+```
+國土利用 LUIMAP 圖磚 → 最近色分類向量化 → 逐宗基地**臨路三態**(直接臨路≤0.5m/
+需搭橋臨路≤1.5m/不臨路;一般道路與防汛道路分別評估)＋地形組成,輸出
+`成果.xlsx`／`sites.shp`／`features.geojson`(格式與舊 fishpv 相同,圖6 不用改)。
+- **須用 QGIS 內建 python**(要 osgeo/GDAL);色碼表已 vendor 在 `config/luimap_colortable.csv`。
+- `--reuse-landuse <既有landuse.tif>` 可跳過圖磚下載(重跑/驗收用)。
+- **來歷**:自 fishpv 忠實移植(門檻與道路關鍵字一字不動),東石 57 案場逐案比對
+  分類欄 57/57 一致、數值欄最大絕對差 0.000000。**改門檻或關鍵字就會改變臨路判定,
+  非經使用者同意不得調整。**
+- 效能:逐案 × 全部地物面相交,57 案場約 10 分鐘。極大型(全國)清冊記憶體會爆,
+  需按縣市切分後分批跑(舊的 `split_shp_persite.py`／`*_fishpv_percase.*` 為 legacy 路徑)。
 
 ### ③ 批次出圖 → 用 `parcel-map-sheet`（經 make_maps --layout maxmap）
 **單一案場含臨路判定的標準走法**:`run_case.py --shp <②的joined.shp> --case <案名>`
-(首跑:fishpv 臨路→總區位圖→停點)→ 再加 `--mode single --layout maxmap` 出六主題。
-⚠️ **`--shp` 一律給絕對路徑**——fishpv 在漁電專案 cwd 下執行,相對路徑會 No such file
-(2026-07-16 實踩)。fishpv 失敗會降級續跑(圖6標失敗、其餘照出),先排除再重跑 `--from fishpv`。
+(首跑:案場定義→臨路評估→總區位圖→停點)→ 再加 `--mode single --layout maxmap` 出六主題。
+⚠️ **`--shp` 一律給絕對路徑**(2026-07-16 實踩)。臨路評估失敗會降級續跑(圖6標失敗、
+其餘照出),先排除再重跑 `--from roadaccess`(舊名 `--from fishpv` 仍相容)。
 
 **臨路判定外擴——使用者口語→參數對照**(2026-07-16 定案):
 - 使用者沒提 → 預設:single 外擴700m、persite 不外擴(都仍疊 EMAP2 見周邊路名)
@@ -153,12 +170,12 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
   出圖完跑重整;2026-07-16 起吃參數、案場ID 支援英數如 S012,不必再改腳本)。
 - **多案場批次的臨路判定/正射時間帳**:臨路判定每案要外擴 700m 抓 PHOTO2+EMAP2,
   面積是案場框的十餘倍,105 案場約 7hr;純正射(PHOTO2+EMAP)約 1-1.5hr。趕時間先出
-  正射、臨路後補(fishpv 成果與合併檔備妥即可隨時單獨補跑)。fishpv 多案場一律
-  **逐案場拆 shp 再跑**(一次餵全清冊會把全國外框當畫布,記憶體爆炸)——拆檔/驅動/
-  合併走 ②b 的三支腳本;make_maps 圖6 已支援依案場範圍過濾宗基地。
+  正射、臨路後補(②c 成果備妥即可隨時單獨補跑)。**極大型(跨縣市/全國)清冊**一次餵
+  會把全國外框當畫布、記憶體爆炸,需**按縣市切分後分批跑 ②c**;make_maps 圖6 已支援
+  依案場範圍過濾宗基地。
 
 六主題:使用分區、使用地編定、國土功能分區、正射套疊、國土利用調查、臨路判定。前三張只需
-②的基地＋周邊即可;後三張各需 NLSC WMTS／LUIMAP／fishpv 臨路資料。
+②的基地＋周邊即可;後三張各需 NLSC WMTS／LUIMAP／②c 臨路資料。
 **🚧 閘門**:`pipeline_check.py sheets <案outputs目錄> --cases <案場數> [--themes ...]`
 (05 清單成功數與圖檔存在性;失敗列照備註 `--cases=` 補跑)。
 
@@ -170,7 +187,7 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
 只重算圖與寫 qgz)。**確認 qgz 存在且可開(層/Layout 齊)才進 ④**。
 
 ### ④ 簡報產製 → 用 `parcel-briefing-deck`
-出圖完成後,以 ①的屬性 Excel＋③的 圖層.gpkg/圖檔_maxmap(＋fishpv 臨路成果,若有)產
+出圖完成後,以 ①的屬性 Excel＋③的 圖層.gpkg/圖檔_maxmap(＋②c 臨路成果,若有)產
 評估案簡報:先 `case_stats.py` 實算統計(數字只能來自這份 JSON,範本敘述句要覆核,
 不可照抄),再依 **v1 定案格式(9 頁)** 組 pptx 並跑 validate＋逐頁目視 QA。
 
