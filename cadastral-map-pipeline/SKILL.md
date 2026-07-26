@@ -27,6 +27,8 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
   ▼     修正後清冊 ＋ 平台已含全部地號的選取清單
   │  ① tcdgis-parcels-to-shp        瀏覽器自動化（沿用⓪的登入與清單）
   ▼     官方地籍 shp(zip) ＋ 屬性 Excel（含 向量面積）
+  │  ⓪c nluz-landzone-query         國土功能分區逐筆查（選用,可與②③並行）
+  ▼     國土功能分區.csv（分區/原使用分區/原使用地/使用地）→ 餵④第5頁
   │  ② shp-xls-area-join            本機腳本（--trust-fields）
   ▼     帶屬性基地 shp（地號/使分/使類/所有權人…）
   │  ③ make_maps --layout maxmap    QGIS（沿用 parcel-map-sheet 版面）
@@ -76,6 +78,15 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
 下載 shp 後、**趁地籍選取/定位還在**,開 規劃模組→環境敏感地區套疊分析→「地籍範圍」
 →勾統計面積→開始查詢,scrape 結果表存 `環境敏感套疊.csv`(詳 `tcdgis-parcels-to-shp`
 的環敏章節)。這份 csv 餵簡報第6頁(環境敏感地),沒查就只能(待補)。
+
+### ⓪c 國土功能分區逐筆查 → 用 `nluz-landzone-query`（選用,但簡報第5頁強烈建議）
+拿①匯出的屬性 Excel（欄位天生齊全）直接餵,查 nluz 報部版逐筆分區,產
+`國土功能分區.csv`（國土功能分區/原使用分區/原使用地/使用地）。
+**不佔登入、不動平台清單**——可與②③並行或事後補跑,不阻塞產線。
+`python <skills>/nluz-landzone-query/scripts/nluz_query.py query --roster <①的Excel> --county <縣市> -o <案>\國土功能分區.csv`
+⚠️ **平台限流 5 秒**(145 筆約 13 分鐘,腳本每 5 筆 checkpoint、中斷可續跑);
+**都市計畫區/國家公園區回「查無」是正常**,非錯誤;版本是**報部版草案**,交付口徑需寫「以縣市政府認定為準」。
+向量面拿不到(平台擋),面圖層仍走本機 `國土功能分區/` 圖資。
 
 ### ② 屬性接回 → 用 `shp-xls-area-join`
 ```powershell

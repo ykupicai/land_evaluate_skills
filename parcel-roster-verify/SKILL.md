@@ -71,6 +71,13 @@ fetch('https://openapi.moi.gov.tw/WEBAPI/LandNewOldQuery/1.0/QueryLandNo',{
   (免 UI,回 JSON;縣碼=同 TCDGIS 縣市下拉 value 的 A-Z 一碼;LotCode=縣1+鄉2+段4)。
 - **API 回 null=無異動紀錄**:地號真的不存在(分割註銷/合併)。依清冊慣例以母號示意出圖並備註,不硬湊。
 
+## 銜接:清冊驗好之後
+
+- 下一步是 `tcdgis-parcels-to-shp`(①,**同一次登入直接接**,勿登出)。
+- 驗好的清冊(或①匯出的屬性 Excel)可另外餵 `nluz-landzone-query` 補
+  **國土功能分區/原使用分區/原使用地/使用地** 四欄——不佔登入、可事後補跑,
+  非都市土地開發評估案建議做(簡報第5頁的權威來源)。
+
 ## ⚠️ 最重要的陷阱:重測後相近段名,同號≠同宗地
 
 礁溪「民權段327」在「民權一段」也有地號327——**但那是別人的地**。正解:民權段327
@@ -88,6 +95,8 @@ fetch('https://openapi.moi.gov.tw/WEBAPI/LandNewOldQuery/1.0/QueryLandNo',{
 | 匯出屬性 Excel | `BatchCADAToExcelMS('SKINDA3')` → Downloads\多重地籍選取結果表.xls |
 | 新舊地號 API | openapi.moi.gov.tw/WEBAPI/LandNewOldQuery/1.0/QueryLandNo |
 | 段名存在(免UI) | MMS QueryHandler.ashx?type=query&CountyCode=X&Keyword=段名 |
+| 段名↔段代碼(免UI,免登入) | `nluz-landzone-query` 的 `nluz_query.py sections --county <縣市> --town <鄉鎮>` |
+| 全國段名代碼批次 CSV | `lisp.land.moi.gov.tw/MMS/Handle/DownloadQuerySection.ashx?DownloadType=csv&CountyCode=<縣碼字母>`(乾淨 CSV:段/小段/代碼/所區碼/縣市/鄉鎮/事務所) |
 
 ## Common Mistakes
 
