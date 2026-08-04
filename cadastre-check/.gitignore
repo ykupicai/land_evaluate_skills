@@ -1,0 +1,6 @@
+config.json
+.cache/
+cadastre_out/
+__pycache__/
+*.pyc
+*.cadidx.sqlite

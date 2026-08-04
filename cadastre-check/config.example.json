@@ -1,0 +1,7 @@
+{
+  "_說明": "複製本檔為 config.json。兩個路徑都可留空。路徑請用正斜線 / 或雙反斜線 \\。",
+  "_cache_dir說明": "都市計畫圖磚快取。留空 = skill 目錄下的 .cache/。",
+  "cache_dir": "",
+  "_output_dir說明": "成果輸出位置。留空 = 執行時所在目錄的 cadastre_out/。",
+  "output_dir": ""
+}
