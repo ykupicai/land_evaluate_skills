@@ -115,6 +115,28 @@ GET https://gic.wra.gov.tw/gis/gic/API/Google/DownLoad.aspx?fname=REGDAREA&filet
 （只給 WMS 影像、沒有明確 LAYERS 代碼）好用太多——**這支端點直接給向量 SHP，不用猜圖層代碼**。
 之前判定為 `kind="wms"` 或 `kind="none"` 的水利署項目已全部改用這支下載。
 
+#### ★ 完整代碼目錄怎麼拿（2026-08-04，使用者指路）
+
+`https://gic.wra.gov.tw/Gis/Page/GeoDataAndServices` 是 SPA、抓不到清單；真正的**資料索引**在
+**`https://gic.wra.gov.tw/Gis/Gic/DataIndex/Data/Main.aspx`**（SHP 206 筆／KML 125 筆，可搜尋）。
+每筆下載鈕的 onclick 是 **`openDownloadPage('shp','2','<英文代碼>')`**，第三個參數就是
+`DownLoad.aspx?fname=` 要用的代碼。頁面是 ASP.NET `__doPostBack` 分頁（21 頁），逐頁 POST
+（保留 `__VIEWSTATE` 等 hidden 欄位、`__EVENTTARGET` 設 `...gvData_A$ctl13$ctlNN`）即可掃完，
+一次得 140 個 SHP 圖層的「代碼→中文名」。與環敏相關的：
+
+| eland 項目 | fname 代碼 |
+|---|---|
+| 中央管河川區域／區域排水設施範圍 | `RIVREGLN`／`REGDAREA` |
+| 水庫集水區／水庫蓄水範圍 | `reservoir`／`ressub`（另有 `_insidearea`/`_outsidearea` 敏感區±0.5km） |
+| 一般性海堤區域 | `SEAWALLZONE` |
+| 自來水水質水量保護區 | `TWQPROT`（另有 ±0.5km 敏感區版本） |
+| **地下水第一/二級管制區** | `gwconare`／`gwconare2`（★嚴重地層下陷以第一級 gwconare 替代判斷）|
+| **淹水潛勢** | `flood_<雨量>mm_<時距>hr`：24hr500mm＝`flood_500mm_24hr`（標準情境）；另 6/12/24hr 各門檻共 10 個 |
+
+⚠ **「地層下陷」在 GIC 只有各縣市「平均下陷速率／累積下陷量等值線」**（分縣市、分年度、
+等值線非面範圍），**不是法定「嚴重地層下陷地區」界線** → 維持以地下水第一級管制區
+（`gwconare`）作替代判斷，報告載明代理關係。
+
 ### 地質雲開放 API（www.geologycloud.tw）—— 比 TGOS 本身更好用的資料源
 
 經濟部地質調查及礦業管理中心的「地質雲加值應用平臺」背後有一支**完全公開、不需金鑰**的 GeoJSON REST API，

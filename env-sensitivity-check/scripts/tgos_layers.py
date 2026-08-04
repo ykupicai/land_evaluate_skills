@@ -161,9 +161,14 @@ LAYERS = [
     {"level": "第二級", "item_no": "9", "sub": None,
      "name": "二級海岸保護區（沿海一般保護區）", "agency": "內政部國家公園署", "kind": "vector", "fmt": "arcgis_query",
      "service_url": "https://coastal.nps.gov.tw/coastal/rest/services/Ocean/SeaSideProtection/MapServer", "layer_id": 0},
+    # 淹水潛勢：改走水利署 GIC 直接下載 SHP（使用者 2026-08-04 指路
+    # gic.wra.gov.tw/Gis/Gic/DataIndex/Data/Main.aspx → openDownloadPage('shp','2','<code>')）。
+    # 比 coastal 的 ArcGIS 大圖層查詢穩（那邊 where=1=1 逾時、要 bbox）。24hr500mm 是使用者
+    # 確認的標準情境；GIC 尚有 6/12/24hr 各雨量門檻共 10 個 fname（見 SKILL.md 目錄）。
     {"level": "第二級", "item_no": "5", "sub": None,
-     "name": "淹水潛勢（24小時降雨500mm標準情境）", "agency": "經濟部水利署", "kind": "vector", "fmt": "arcgis_query",
-     "service_url": "https://coastal.nps.gov.tw/coastal/rest/services/Ocean/others/MapServer", "layer_id": 29, "bbox_query": True},
+     "name": "淹水潛勢（24小時降雨500mm標準情境）", "agency": "經濟部水利署",
+     "kind": "vector", "fmt": "shp",
+     "url": "https://gic.wra.gov.tw/gis/gic/API/Google/DownLoad.aspx?fname=flood_500mm_24hr&filetype=SHP"},
     # ---- 第一級（海岸保護區，補在後面避免影響前面既有比對）----
     {"level": "第一級", "item_no": "11", "sub": None,
      "name": "一級海岸保護區（沿海自然保護區）", "agency": "內政部國家公園署", "kind": "vector", "fmt": "arcgis_query",

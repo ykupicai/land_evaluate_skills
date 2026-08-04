@@ -124,7 +124,15 @@ def load_layer_gdf(layer: dict, bbox=None) -> gpd.GeoDataFrame:
             f.write(_fetch_validated(url, ext, timeout=60))
 
     if fmt == "shp":
-        gdf = gpd.read_file(f"zip://{path}")
+        # ⚠ zip 內的 .shp 可能在子目錄（GIC 下載檔就是 `Flood_500mm_24HR/xxx.shp`），
+        #   `zip://path` 只看根目錄會 DataSourceError。找出 zip 內第一個 .shp 的相對路徑再讀。
+        import zipfile  # noqa: PLC0415
+        with zipfile.ZipFile(path) as zf:
+            shps = [n for n in zf.namelist() if n.lower().endswith(".shp")]
+        if not shps:
+            raise ValueError(f"zip 內沒有 .shp：{path}")
+        gdf = gpd.read_file(f"zip://{path}!{shps[0]}" if "/" in shps[0]
+                            else f"zip://{path}")
     elif fmt == "kml":
         gdf = gpd.read_file(path, driver="KML")
     else:
