@@ -1,0 +1,4 @@
+# 下載圖資快取（可重抓，不進版控；動輒上百 MB）
+scripts/cache/
+scripts/__pycache__/
+env_check_out/
