@@ -145,6 +145,20 @@ TGOS 本身的下載網址／WMS 服務網址，可到該資料集詮釋資料�
 （`https://www.tgos.tw/tgos/NgdaMap` 搜尋 → 點資料集 → 頁面下方「圖資及服務資訊」表格）；
 地質、水文類則優先檢查該主管機關自己的加值應用平台（如地質雲）是否有更好的開放 API，往往比 TGOS 詮釋資料頁列的 WMS 更完整。
 
+### ★ 來源取捨的優先順序（使用者 2026-08-04 定案）
+
+**API 不好接、但有 SHP 可下載時，直接下載 SHP 當基礎圖資來判斷**，不要卡在 API 上、
+也不要因此把該項退成「逕洽機關」。優先順序：
+
+1. **直接下載 SHP／GeoJSON**（最好，可離線相交）：TGOS 詮釋資料頁「下載」鈕、
+   主管機關開放資料頁、GIC `DownLoad.aspx?fname=X&filetype=SHP`、地質雲 GeoJSON。
+   → 加 `kind="vector"`、`fmt="shp"`（給 `url`）或 `fmt="geojson"`。
+2. **公開 ArcGIS REST**（`.../MapServer/<id>/query`）：大圖層記得設 `"bbox_query": True`。
+3. 只有 WMS 影像、或自製圖台 API 猜不到（如 gis.ardswc.gov.tw 的 geoinfo_api，
+   端點型式全 404）→ **先找該資料有沒有 SHP 版可下載**；真的都沒有，才標 `kind="wms"`／
+   逕洽機關，並在報告寫明「無公開向量圖資、須逕洽」。
+   ⚠ 不要在猜不到的自製 API 上反覆試探（產線紀律：遇未記載平台行為停下回報）。
+
 ## 輸出
 
 ```
