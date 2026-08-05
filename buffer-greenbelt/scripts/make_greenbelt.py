@@ -12,11 +12,17 @@
 
 幾何細節(2026-07 官田案與使用者確認之定案):
   * 退縮自「所有邊界」為之——含 dissolve 區塊內部的洞(未圈入的宗地/水路缺口),
-    故洞緣亦有綠帶。此為預設行為。
+    故洞緣亦有綠帶。此為預設行為(法令意旨:內含裡地/他人農地也要以綠帶隔離)。
   * 若只要沿外周長設帶(內部洞不設),加 --outer-only:先把每個區塊的洞填掉再退縮,
     綠帶再與原 dissolve 範圍取交集(避免綠帶落在洞內非基地土地上)。
   * 寬度不足 2W 的獨立區塊退縮後會完全消失=整塊納入綠帶;腳本會點名警告,不靜默。
   * 全部幾何先 make_valid 再 union——官田案實測含無效幾何,不修會靜默算錯(bbox 塌縮)。
+  * ★閉髮絲縫(2026-08-05 後壁南海段社福實踩):相鄰宗地邊界常沒完全貼合、留 0.2~0.3mm
+    的縫,union 後變細長內縫,預設圍洞就會沿縫長出一條「內部假綠帶」(那次紅圈那條)。
+    → union 後先 `buffer(close_gap).buffer(-close_gap)` 閉合 <close_gap 的髮絲縫,
+    但**保留真裡地**(裡地短邊遠大於 close_gap,不會被填)。`--close-gap` 預設 0.1m。
+    ⚠ 這只清數化髮絲縫,不改真實邊界;真裡地(數十㎡以上、短邊數公尺)照樣圍綠帶。
+    ⚠ greenbelt_ratio.py(農地變更隔離綠帶)為同型演算法,若也出現內部假綠帶,同法處理。
 """
 import argparse
 import os
@@ -44,6 +50,9 @@ def main():
     ap.add_argument("--out-dir", default="緩衝綠帶")
     ap.add_argument("--outer-only", action="store_true",
                     help="只沿外周長設帶(內部洞不設);預設含洞緣")
+    ap.add_argument("--close-gap", type=float, default=0.1,
+                    help="閉合 <此值(m) 的髮絲縫(地籍邊界未貼合的數化縫),避免內部假綠帶;"
+                         "保留真裡地。預設 0.1m;設 0 關閉")
     a = ap.parse_args()
 
     g = gpd.read_file(a.base, layer=a.layer) if a.layer else gpd.read_file(a.base)
@@ -51,6 +60,13 @@ def main():
         print("[warn] 來源 CRS 非公尺制或缺 CRS,退縮距離將失真——請先確認(臺灣通常 EPSG:3826)")
 
     d = make_valid(union_all([make_valid(x) for x in g.geometry]))
+    if a.close_gap > 0:
+        # 閉合髮絲縫(見檔頭★):填 <close_gap 的細縫,真裡地(短邊 >> close_gap)不受影響。
+        before = d.area
+        d = make_valid(d.buffer(a.close_gap).buffer(-a.close_gap))
+        holes_after = sum(len(p.interiors) for p in parts_of(d))
+        print(f"閉髮絲縫(<{a.close_gap}m):面積變動 {d.area - before:+.2f}㎡,"
+              f"保留內部洞(真裡地) {holes_after} 個")
     src = fill_holes(d) if a.outer_only else d
     inner = src.buffer(-a.width)
     green = src.difference(inner)

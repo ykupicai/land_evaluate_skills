@@ -299,6 +299,13 @@ python scripts\check_zones.py --joined <②joined.shp> --checklist _共通_農�
 - `pdftoppm` 沒裝 → 用 PyMuPDF(`fitz`)把 PDF 逐頁存 jpg。
 - 地圖 PNG 是 RGBA,存 jpg 前先 `.convert('RGB')`。
 - QA 必做:validate 全過 + 每頁渲染目視(溢出/重疊/佔位殘留)。
+- **★逐頁核對「圖＝該頁主題」**(2026-08-05 後壁南海段社福實踩):`build_deck.py` 每個
+  `D.pic(...)` 接的圖,必須是**該頁主題的實際成果圖**,不可用區位圖(LOC)或別頁的圖充數。
+  兩個常犯處:①**主題圖根本沒產**就先寫接圖那行(緩衝綠帶頁忘了先跑
+  `make_extra_maps --theme 緩衝綠帶`,拿 LOC 頂替);②圖檔變數接錯(定義了 GRB 卻寫成 LOC)。
+  → 出簡報前先確認**每個主題頁的成果圖都已產出**(make_maps/make_extra_maps/make_env_map/
+  make_locality_map),再逐頁目視「標題講的主題」與「圖的內容」相符。這與規則③「環敏頁要放
+  實際套疊圖層」是同一類錯(接錯圖/答非所問),**不限環敏頁,任何主題頁都要核**。
 
 ## 版本紀錄
 
