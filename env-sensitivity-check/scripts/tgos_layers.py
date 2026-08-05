@@ -11,7 +11,21 @@ kind:
 
 match 用來比對 eland.py 解析出的 item：(level 關鍵字, item_no, sub_name 關鍵字或 None)
 level 關鍵字只需是 "第一級"/"第二級"/"海岸管理法" 其中之一的子字串。
+
+────────────────────────────────────────────────────────────────────────
+單一登記表（2026-08-04 合流）：本檔同時是「遠端源(免登入現行)」與「本機源(圖資快照)」
+的唯一權威。
+  LAYERS       ── eland 項目 →（多為）遠端源；find_layer(level,item_no,sub) 查（初篩用）
+  LOCAL_LAYERS ── 平台套疊表「圖層名稱」→ 本機 環境敏感相關/ 相對路徑；
+                  resolve_by_name(name, county, env_root, case_dir) 查（出圖／本機套疊用）
+解析優先序（resolve_by_name）：案件層 override > 本機圖資（env_root 注入）。
+遠端現行源的優先權由呼叫端（make_env_map 出圖／overlay 初篩）決定要不要改抓遠端。
+★ 可攜性：本機列一律用**相對路徑**（相對 env_root）；env_root=None（skill 單獨跑）時
+  本機列自動略過。主專案（env_registry 薄殼）注入 env_root=`環境敏感相關/`。
+  自 env_registry.py 逐字搬入，regex 與路徑不動，確保解析行為與搬移前完全一致。
 """
+import re
+from pathlib import Path
 
 LAYERS = [
     # ---- 第一級 ----
@@ -227,6 +241,22 @@ LAYERS = [
      "name": "礦業保留區（礦業保留地）", "agency": "經濟部／內政部國家公園署",
      "kind": "vector", "fmt": "arcgis_query",
      "service_url": "https://coastal.nps.gov.tw/coastal/rest/services/Ocean/vulnerable/MapServer", "layer_id": 18},
+
+    # ══ 2026-08-04 新增：文化部文化資產局 OpenData v2（免認證）補齊 coastal 缺的兩類 ══
+    # data.boch.gov.tw/opendata/v2/assetsCase/<類碼>.json：七類建造物資產全在，但
+    # coastal 的 vulnerable 服務只有 古蹟/歷史建築/聚落建築群/文化景觀/考古遺址，
+    # 獨缺「紀念建築」「史蹟」→ 這兩類改抓文資局開放資料補上。
+    # ⚠ 幾何說明（重要）：走非-geo 端點回的是每筆一個 longitude/latitude 代表點
+    #   ＋ landlotList（坐落地號）。/geo/ 端點（理論面幾何）2026-08-04 實測伺服器 500，
+    #   故先用點位版。overlay._load_boch_asset 會把代表點以 point_buffer_m 緩衝成面再相交——
+    #   **命中僅代表『附近有此類文資』，實際坵塊須以 landlotList 地號人工核對**，非權威判定。
+    # ⚠ 全國筆數少（紀念建築 21、史蹟 7），誤報成本近零，故採寧可標出給人看的初篩定位。
+    {"level": "第二級", "item_no": "15", "sub": None,
+     "name": "紀念建築", "agency": "文化部文化資產局", "kind": "vector",
+     "fmt": "boch_asset", "boch_code": "1.4", "point_buffer_m": 100},
+    {"level": "第二級", "item_no": "16", "sub": None,
+     "name": "史蹟", "agency": "文化部文化資產局", "kind": "vector",
+     "fmt": "boch_asset", "boch_code": "3.2", "point_buffer_m": 100},
 ]
 
 
@@ -243,3 +273,150 @@ def find_layer(level: str, item_no: str, sub_name: str = ""):
         elif sub_name and ly["sub"] in sub_name:
             return ly
     return best
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 本機源（LOCAL_LAYERS）與 平台圖層名 → 幾何 的解析
+# 自 大量圖資轉換工具/scripts/env_registry.py 逐字搬入（2026-08-04 單一登記表合流）。
+# 相對路徑相對於呼叫端注入的 env_root（＝主專案 `環境敏感相關/`）。
+# ════════════════════════════════════════════════════════════════════════
+FLOOD_RGB = {
+    "0-0.3": (255, 255, 190), "0.3-0.5": (190, 232, 255), "0.5-1": (115, 178, 255),
+    "1-2": (0, 112, 255), "2-3": (0, 38, 194), ">3": (10, 0, 110),
+}
+FLOOD_LABELS = {
+    "0-0.3": "0～0.3 公尺", "0.3-0.5": "0.3～0.5 公尺", "0.5-1": "0.5～1 公尺",
+    "1-2": "1～2 公尺", "2-3": "2～3 公尺", ">3": "3 公尺以上",
+}
+
+LOCAL_LAYERS = [
+    # 淹水潛勢（各降雨組體，臺南市檔名為 24h500 等；嘉義縣為 q_24hr500）
+    {"match": r"淹水潛勢圖?_?定量降雨(\d+)小時(\d+)mm",
+     "shp": ["第二級/淹水潛勢/{county}/SHP/{h}h{mm}.shp",
+             "第二級/淹水潛勢/{county}/q_{h:0>2}hr{mm}.shp"],
+     "field": "type", "colors": FLOOD_RGB, "labels": FLOOD_LABELS,
+     "crs": 3826, "title": "淹水潛勢 {h}hr{mm}mm"},
+    {"match": r"公路兩側禁建限建", "shp": ["第二級/2-30 公路兩側禁建限建地區/高速公路兩側禁建限建地區.shp"],
+     "field": None, "crs": 3826, "title": "公路兩側禁建限建地區"},
+    {"match": r"地質敏感區.*活動斷層|活動斷層",
+     "shp": ["第二級/2-01 地質敏感區(活動斷層、山崩與地滑、土石流)(1051221update)/全國活動斷層帶.shp"],
+     "field": None, "crs": 3826, "title": "地質敏感區（活動斷層）"},
+    {"match": r"山崩與地滑|山崩地滑",
+     "shp": ["第二級/2-01 地質敏感區(活動斷層、山崩與地滑、土石流)(1051221update)"
+             "/地質敏感區山崩與地滑.shp"],
+     "field": None, "crs": 3826, "rgb": (255, 127, 14),
+     "title": "地質敏感區（山崩與地滑）"},
+    # 自然保留區：**一律用 1152（115年第2版，TGOS 下載）**，106 年版只留作 fallback。
+    # 2026-08-04 龍崎案實踩：106 年版只有 23 筆、不含 NR23，逐筆距離算出「13 公里外」，
+    # 而平台正確回報套疊 8.88 ㎡；換 1152 後本機重算 8.88 ㎡ 與平台一字不差。
+    {"match": r"自然保留區",
+     "shp": ["第一級/1-07 自然保留區 (1152_115年第2版)/自然保留區1152.shp",
+             "第一級/1-07 自然保留區 (1060523update)/自然保留區1061.shp"],
+     "field": None, "crs": 3826, "rgb": (44, 160, 44),
+     "title": "自然保留區"},
+    {"match": r"嚴重地層下陷", "shp": ["第二級/2-03 嚴重地層下陷地區(941215update)/941215{county}all_1.shp"],
+     "field": None, "crs": 3826, "title": "嚴重地層下陷地區"},
+    {"match": r"山坡地", "shp": ["第二級/2-06 山坡地 (1060531update)/BOUNDARY.shp"],
+     "field": None, "crs": 3826, "rgb": (148, 103, 189), "title": "山坡地"},
+    {"match": r"自來水水質水量保護區",
+     "shp": ["第二級/2-20 自來水水質水量保護區(1060629update)/WaterQualityAndQuantityProtectionArea_Twd97_V3.0.shp"],
+     "field": None, "crs": 3826, "title": "自來水水質水量保護區"},
+    {"match": r"中央管河川區域", "shp": ["第一級/1-03 中央管河川區域 (1060629update)/河川區域線.shp"],
+     "field": None, "crs": 3826, "title": "中央管河川區域"},
+    {"match": r"中央管區域排水", "shp": ["第一級/1-05 中央管區域排水設施範圍 (1060629update)/排水設施範圍線.shp"],
+     "field": None, "crs": 3826, "title": "中央管區域排水設施範圍"},
+    {"match": r"海岸管制區", "shp": ["其他/海岸管制區/海岸管制區.shp"],
+     "field": None, "crs": 3826, "title": "海岸管制區"},
+    # 地下水管制區：平台清單只有「第一級」，第二級須靠本機圖資（2026-07-29 安南案實需）
+    {"match": r"地下水管制區第一級|地下水第一級管制區",
+     "shp": ["其他/地下水管制區/gwconare.shp"],
+     "field": None, "crs": 3826, "title": "地下水管制區第一級", "encoding": "big5"},
+    {"match": r"地下水管制區第二級|地下水第二級管制區",
+     "shp": ["其他/地下水管制區/gwconare2.shp"],
+     "field": None, "crs": 3826, "title": "地下水管制區第二級", "encoding": "big5"},
+    # 礦區類三層（2-22，106年版）：面圖層算面積、煤礦坑道為線圖層。
+    {"match": r"礦區|現存礦區",
+     "shp": ["第二級/2-22 礦區(場)、礦業保留區、地下礦坑分布地區(1060630update)/106現存礦區範圍圖.shp"],
+     "field": None, "crs": 3826, "rgb": (140, 86, 75), "title": "現存礦區範圍"},
+    {"match": r"礦業保留",
+     "shp": ["第二級/2-22 礦區(場)、礦業保留區、地下礦坑分布地區(1060630update)/礦業保留地.shp"],
+     "field": None, "crs": 3826, "rgb": (196, 156, 148), "title": "礦業保留地"},
+    {"match": r"地下礦坑|煤礦坑道|煤礦",
+     "shp": ["第二級/2-22 礦區(場)、礦業保留區、地下礦坑分布地區(1060630update)/煤礦坑道.shp"],
+     "field": None, "crs": 3826, "rgb": (127, 127, 127), "title": "煤礦坑道"},
+]
+GENERIC_RGB = (255, 80, 80)
+# 多層同時套疊時每層須可區辨色（避免圖例好幾格同紅）；未指定 rgb 者依序取此色環。
+GENERIC_PALETTE = [
+    (214, 39, 40), (255, 127, 14), (148, 103, 189), (23, 190, 207),
+    (188, 189, 34), (227, 119, 194), (44, 160, 44), (31, 119, 180),
+]
+DEFAULT_ALPHA = 0.40   # 使用者定案 2026-07-29：套疊圖層 40% 不透明度
+
+
+def _norm_county(name: str):
+    """縣市名的檔名變體（臺/台）。"""
+    out = [name]
+    if "臺" in name:
+        out.append(name.replace("臺", "台"))
+    if "台" in name:
+        out.append(name.replace("台", "臺"))
+    return out
+
+
+def resolve_case_override(layer_name: str, case_dir):
+    """案件層覆蓋：`<案>/環敏/<平台圖層名>.{geojson,shp}` 存在就優先用它。
+
+    用途＝本機圖資比平台舊時，把平台的權威幾何拉進來出圖（NR23 龍崎案 106 年版查不到）。
+    ⚠ 這是「有／沒有」的差異，不是面積門檻差異——不可當成邊界誤差忽略。
+    """
+    case_dir = Path(case_dir)
+    d = case_dir / "環敏"
+    if not d.is_dir():
+        return None
+    for p in sorted(d.iterdir()):
+        if p.suffix.lower() not in (".geojson", ".json", ".shp"):
+            continue
+        if layer_name in p.stem:
+            return p
+    return None
+
+
+def resolve_by_name(layer_name: str, county: str, env_root=None, case_dir=None):
+    """把平台套疊表「圖層名稱」解析成 (路徑, 規則)；找不到回 (None, 規則或 None)。
+
+    優先序：案件層 `<案>/環敏/` 覆蓋檔 > 本機 env_root 下的 shp。
+    env_root=None（skill 單獨跑，無本機圖資）時只回案件層覆蓋檔，其餘回 (None, rule)。
+    env_root 供主專案注入 `環境敏感相關/`（見 env_registry 薄殼）；亦供測試注入假圖資樹。
+    """
+    ov = resolve_case_override(layer_name, case_dir) if case_dir else None
+    for rule in LOCAL_LAYERS:
+        m = re.search(rule["match"], layer_name)
+        if not m:
+            continue
+        subs = {"county": county}
+        if m.lastindex:
+            groups = m.groups()
+            if len(groups) >= 2:
+                subs["h"], subs["mm"] = groups[0], groups[1]
+        if ov is not None:
+            print(f"    （{layer_name}：採案件層覆蓋檔 {ov.name}，不用本機 環境敏感相關/）")
+            return ov, dict(rule, _subs=subs, _override=True)
+        if env_root is None:
+            return None, dict(rule, _subs=subs)
+        for tmpl in rule["shp"]:
+            for c in _norm_county(county):
+                s = dict(subs, county=c)
+                try:
+                    rel = tmpl.format(**s)
+                except (KeyError, IndexError):
+                    continue
+                p = Path(env_root) / rel
+                if p.exists():
+                    return p, dict(rule, _subs=s)
+        return None, rule
+    if ov is not None:
+        print(f"    （{layer_name}：LOCAL_LAYERS 未登錄，採案件層覆蓋檔 {ov.name}）")
+        return ov, {"match": "", "shp": [], "field": None, "crs": 3826,
+                    "title": layer_name, "_subs": {}, "_override": True}
+    return None, None

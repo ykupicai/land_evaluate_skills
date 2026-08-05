@@ -11,6 +11,16 @@ description: 台灣開發基地環境敏感地區自動化初步評估。輸入�
 python scripts/check.py 高雄市 路竹區 保安段 711-3
 ```
 
+> ★★ 2026-08-05 大改（大量圖資轉換工具產線接入）：
+> - **第一層初篩改用官方『應免查範圍』離線 PDF**（`exempt_source.py` 讀
+>   `parse_exempt_pdf.py` 產的 JSON），**取代線上 eland**：離線、權威、有版本、
+>   不受 eland SSL／快取污染坑影響。線上 eland（`eland.py`）保留為未給 JSON 時的回退。
+>   下游 `api.run(..., exempt_json=..., sections=..., env_root=...)` 三個新參數。
+> - **單一登記表**：本檔的遠端 `LAYERS` 與本機 `LOCAL_LAYERS` 已合流到 `tgos_layers.py`
+>   同檔（見該檔頭）；`overlay.py` 加 `fmt=local_shp` 吃本機圖資（山坡地/礦區等只有本機者，
+>   由呼叫端注入 env_root）。大量圖資轉換工具的 `env_registry.py` 已成薄殼 re-export。
+> - 判定語意與踩坑寫成大量圖資轉換工具 `tests/test_exempt_prescreen.py`。詳見該產線 CLAUDE.md「環敏」節。
+
 ## 兩層過濾邏輯（這是本 skill 存在的理由）
 
 1. **第一層 — eland 應免查範圍過濾**：自動模擬瀏覽器送出
@@ -36,9 +46,10 @@ eland 沒有公開 API，「應免查範圍查詢」是一般 ASP.NET Core 表�
 
 ## TGOS 圖資對照表現況
 
-`scripts/tgos_layers.py` 目前收錄 **43 筆**設定（40 個真向量圖資 + 3 個使用分區屬性判斷），**沒有任何項目
-停留在 WMS-only**。其餘約 17 項 eland 項目（多為國安/軍事管制、地方零星資料、法規未提供查詢資料等）
-仍查無可自動化來源，需逕洽主管機關或走 eland 正式申請 —— 完整 46 項逐一比對結果見專案資料夾內
+`scripts/tgos_layers.py` 目前收錄 **55 筆**設定（52 個真向量圖資 + 3 個使用分區屬性判斷），**沒有任何項目
+停留在 WMS-only**。剩下仍查無可自動化來源、需逕洽主管機關或走 eland 正式申請者，多為**軍事／海岸管制區
+（陸軍，機密）、交通兩側禁限建（高速公路／鐵路／捷運）、礦區（場）與地下礦坑、洪氾區、氣象／民航／
+核子禁限建**等——這些不是「還沒接」，而是根本無公開向量資料（詳「還差哪些項目」一節）—— 完整 46 項逐一比對結果見專案資料夾內
 `TGOS環境敏感圖資對照表.xlsx`（2026-08 查證版本，該檔案的 kind 欄位僅到第一輪查證，實際涵蓋範圍以本檔
 與 `tgos_layers.py` 為準，後續持續擴充中）。
 
@@ -49,6 +60,7 @@ eland 沒有公開 API，「應免查範圍查詢」是一般 ASP.NET Core 表�
 | 活動斷層兩側一定範圍／地質敏感區(地質遺跡)／地質敏感區(地下水補注)／地質敏感地區(山崩與地滑)／土石流潛勢溪流地區 | 地質雲開放 API |
 | 森林（區域計畫劃定之森林區）／優良農地／優良農地以外之農業用地 | **使用分區屬性直接判斷**（不套疊圖資，見下） |
 | 國家公園區內之特別景觀區、生態保護區／國家公園內之史蹟保存區／國家公園內之一般管制區及遊憩區／古蹟保存區／考古遺址／重要聚落建築群／重要文化景觀／飲用水水源水質保護區／飲用水取水口一定距離內之地區／國有林事業區／保安林／林業試驗林地／溫泉露頭及其一定範圍／水產動植物繁殖保育區／人工魚礁區及保護礁區／國際級重要濕地／地方級／國家級重要濕地核心保育區以外分區 | **內政部國家公園署海岸圖台 `vulnerable` 服務**（見下），一次接了 17 項 |
+| 紀念建築／史蹟 | **文化部文化資產局 OpenData v2**（`data.boch.gov.tw`，點位＋地號，補 coastal 缺的兩類，見下） |
 | 一級／二級海岸防護區 | 內政部國家公園署海岸圖台 `coastalDefend` 服務 |
 | 一級海岸保護區（含海岸管理法特定區位版本） | 內政部國家公園署海岸圖台 `SeaSideProtection` 服務 layer 1（沿海自然保護區） |
 | 二級海岸保護區（含海岸管理法特定區位版本） | 內政部國家公園署海岸圖台 `SeaSideProtection` 服務 layer 0（沿海一般保護區） |
@@ -166,6 +178,34 @@ GET https://www.geologycloud.tw/data/zh-tw/ext_swcb_DebrisArea            # 全�
 TGOS 本身的下載網址／WMS 服務網址，可到該資料集詮釋資料頁按「下載」或「服務」按鈕取得
 （`https://www.tgos.tw/tgos/NgdaMap` 搜尋 → 點資料集 → 頁面下方「圖資及服務資訊」表格）；
 地質、水文類則優先檢查該主管機關自己的加值應用平台（如地質雲）是否有更好的開放 API，往往比 TGOS 詮釋資料頁列的 WMS 更完整。
+
+### 文化部文化資產局 OpenData v2（data.boch.gov.tw）—— 補齊 coastal 缺的兩類文資
+
+coastal 的 `vulnerable` 服務已涵蓋 **古蹟／歷史建築／聚落建築群／文化景觀／考古遺址**，
+但**獨缺「紀念建築」與「史蹟」**。文資局有一組**免認證**的 OpenData v2，七類建造物資產全在：
+
+```
+GET https://data.boch.gov.tw/opendata/v2/assetsCase/1.4.json   # 紀念建築（全國 21 筆）
+GET https://data.boch.gov.tw/opendata/v2/assetsCase/3.2.json   # 史蹟（全國 7 筆）
+# 完整類碼：1.1古蹟 1.2歷史建築 1.3聚落建築群 1.4紀念建築 2.1考古遺址 3.1文化景觀 3.2史蹟
+# OpenAPI 規格：GET https://data.boch.gov.tw/v3/api-docs/OpendataApi_v2
+```
+
+- **回傳是每筆一個 `longitude`/`latitude`（WGS84 代表點）＋ `landlotList`（坐落地號）**，
+  不是面幾何。`tgos_layers.py` 用 `fmt="boch_asset"`＋`boch_code`＋`point_buffer_m`（預設 100m），
+  `overlay._load_boch_asset` 把代表點緩衝成面再相交。
+- ⚠ **命中僅代表「基地附近有此類文資」，實際坵塊須以回傳的「地號」欄（landlotList）人工核對**，
+  非權威判定（正式仍以文資局查復為準）。因全國筆數極少、誤報成本近零，故採「寧可標出給人看」的初篩定位。
+- ⚠ **無有效座標的筆數會被印出來、不納入空間篩檢**（實測 紀念建築 3 筆、史蹟 1 筆，多為金門資產），
+  避免靜默漏成「無涉及」——那幾筆只能靠地號人工核對。
+- ⚠ `/opendata/v2/assetsCase/geo/<類碼>.json`（理論上回**面幾何**）2026-08-04 實測伺服器
+  回 **HTTP 500『系統異常』**，故先走非-geo 的點位版；該端點恢復後可改抓 geo 版取真實面界。
+- 憑證同樣缺 SKI（見「踩過的坑」），已把 `data.boch.gov.tw` 加進 `govtls.GOV_HOSTS`。
+
+**礦區（場）／地下礦坑仍無解**：礦業雲圖台（mine.geologycloud.tw）的後端
+`geologyapi.gsmma.gov.tw/getlandsectionjson` 有礦業用地幾何，但**憑證根不受信任
+（`SEC_E_UNTRUSTED_ROOT`，GCA 憑證鏈缺中繼，非 SKI 型）**；data.gov.tw 只有 CSV 無座標
+（dataset 163035）。→ 需要時得掛政府 GCA CA bundle 才連得上，維持逕洽經濟部。
 
 ### ★ 來源取捨的優先順序（使用者 2026-08-04 定案）
 

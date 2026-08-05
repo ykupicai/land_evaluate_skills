@@ -36,6 +36,8 @@ GOV_HOSTS = (
     "https://gic.wra.gov.tw",
     "https://maps.wra.gov.tw",
     "https://gis.ardswc.gov.tw",
+    "https://data.boch.gov.tw",   # 文化部文化資產局 OpenData v2（紀念建築/史蹟）
+    "https://www.tgos.tw",        # TGOS 國家空間資料資產（本機環敏 shp 換版下載）
 )
 
 

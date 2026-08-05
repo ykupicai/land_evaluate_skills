@@ -7,7 +7,7 @@ import hashlib
 import requests
 import geopandas as gpd
 import pandas as pd
-from shapely.geometry import shape
+from shapely.geometry import shape, Point
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -115,6 +115,10 @@ def load_layer_gdf(layer: dict, bbox=None) -> gpd.GeoDataFrame:
         return _load_arcgis_query(layer, bbox=bbox)
     if fmt == "arcgis_query_multi":
         return _load_arcgis_query_multi(layer)
+    if fmt == "boch_asset":
+        return _load_boch_asset(layer)
+    if fmt == "local_shp":
+        return _load_local_shp(layer)
 
     url = layer["url"]
     ext = "zip" if fmt == "shp" else fmt
@@ -244,6 +248,73 @@ def _load_geojson_multi(layer: dict) -> gpd.GeoDataFrame:
             json.dump(combined, f, ensure_ascii=False)
     gdf = gpd.read_file(path)
     return _finalize_crs(gdf)
+
+
+def _load_local_shp(layer: dict) -> gpd.GeoDataFrame:
+    """本機環境敏感圖資（單一登記表 LOCAL_LAYERS 解析出的 shp）。
+
+    layer 由 tgos_layers.resolve_by_name 產生的規則加上 `local_path` 組成：
+      local_path : 已解析存在的絕對路徑（.shp/.geojson，含案件層 override）
+      crs        : 無 .prj 時假定的 EPSG（本機山坡地 BOUNDARY.shp 就沒有 .prj）
+      encoding   : dbf 編碼（地下水管制區為 big5）
+    ⚠ 本機圖資多為 105~106 年快照，可能比平台舊（NR23 教訓）；此為免登入初篩用，
+      交付仍以平台／主管機關查復為準。線圖層（河川/排水/煤礦坑道）以 intersects 判穿越，
+      不緩衝——「線穿過基地」即為相交，符合套疊語意。"""
+    path = str(layer["local_path"])
+    kw = {}
+    enc = layer.get("encoding")
+    if enc:
+        kw["encoding"] = enc
+    gdf = gpd.read_file(path, **kw)
+    if gdf.crs is None:
+        gdf = gdf.set_crs(f"EPSG:{layer.get('crs', 3826)}")
+    return _finalize_crs(gdf)
+
+
+BOCH_BASE = "https://data.boch.gov.tw/opendata/v2/assetsCase"
+
+
+def _load_boch_asset(layer: dict) -> gpd.GeoDataFrame:
+    """文化部文化資產局 OpenData v2（免認證）：紀念建築(1.4)、史蹟(3.2)等建造物資產。
+    每筆有 longitude/latitude（WGS84 代表點）與 landlotList（坐落地號）。
+
+    ⚠ 幾何是**代表點非坵塊面**：以 layer['point_buffer_m']（預設 100m）緩衝成面後才做相交，
+      命中僅代表『基地附近有此類文資』，實際坵塊須以回傳的『地號』欄（landlotList）人工核對，
+      不可逕當權威判定（正式仍以文資局查復為準）。
+    ⚠ /geo/ 端點（理論面幾何）2026-08-04 實測回 HTTP 500『系統異常』，故走非-geo 的點位版；
+      該端點恢復後可改抓 geo 版取真實面界。"""
+    code = layer["boch_code"]
+    url = f"{BOCH_BASE}/{code}.json"
+    path = _cache_path(url, "json")
+    if not _cache_valid(path, "json"):
+        with open(path, "wb") as f:
+            f.write(_fetch_validated(url, "json", timeout=60))
+    with open(path, "r", encoding="utf-8") as f:
+        rows = json.load(f)
+    recs, dropped = [], []
+    for r in rows:
+        try:
+            lon = float(r.get("longitude")); lat = float(r.get("latitude"))
+        except (TypeError, ValueError):
+            dropped.append(r.get("caseName")); continue
+        if not (119 <= lon <= 123 and 21 <= lat <= 26):   # 台灣本島＋離島合理範圍，濾掉髒點
+            dropped.append(r.get("caseName")); continue
+        landnos = "、".join(
+            f"{a.get('cityName', '')}{a.get('distName', '')}{a.get('landNo', '')}"
+            for a in (r.get("landlotList") or []))
+        recs.append({"名稱": r.get("caseName"), "caseId": r.get("caseId"),
+                     "地號": landnos, "geometry": Point(lon, lat)})
+    # ⚠ 無有效座標者無法做空間篩檢 → 一律印出，避免靜默漏成「無涉及」（本專案鐵律）。
+    #   這幾筆只能靠 landlotList 地號人工核對是否落在基地所在鄉鎮。
+    if dropped:
+        print(f"    [boch {code}] ⚠ {len(dropped)} 筆無有效座標、未納入空間篩檢，"
+              f"須以地號人工核對：{'、'.join(str(x) for x in dropped)}")
+    gdf = gpd.GeoDataFrame(recs, geometry="geometry", crs="EPSG:4326")
+    gdf = _finalize_crs(gdf)                                # → EPSG:3826（公尺）
+    buf = layer.get("point_buffer_m", 100)
+    if buf and len(gdf):
+        gdf["geometry"] = gdf.geometry.buffer(buf)
+    return gdf
 
 
 def _load_geojson_town(layer: dict, county: str, town: str) -> gpd.GeoDataFrame:

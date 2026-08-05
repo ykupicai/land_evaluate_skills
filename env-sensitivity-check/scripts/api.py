@@ -22,8 +22,9 @@ _THIS_DIR = os.path.dirname(__file__)
 sys.path.insert(0, _THIS_DIR)
 
 from eland import ElandSession  # noqa: E402
-from tgos_layers import find_layer  # noqa: E402
+from tgos_layers import find_layer, resolve_by_name  # noqa: E402
 from overlay import check_intersection  # noqa: E402
+import exempt_source  # noqa: E402  # 離線 PDF 初篩（取代線上 eland；見 exempt_source.py）
 
 SCHEMA = 1
 
@@ -44,7 +45,15 @@ def _load_cadastre_api():
     return mod
 
 
-def run(city: str, town: str, section: str, landnos: list[str], village: str | None = None):
+def run(city: str, town: str, section: str, landnos: list[str], village: str | None = None,
+        exempt_json=None, sections=None, env_root=None):
+    """
+    exempt_json：給了就用離線 PDF「應免查範圍」做初篩（取代線上 eland；使用者定案 2026-08-05）。
+                 未給則回退線上 eland（保 skill 可攜）。
+    sections   ：基地涵蓋的段清單（供 PDF 段級項目比對；未給時用 [section]）。
+    env_root   ：本機環境敏感圖資根（主專案 `環境敏感相關/`）。給了才會對無遠端源的
+                 應查項（山坡地/礦區等）改走本機圖資套疊；未給則該類項回「逕洽」。
+    """
     cadastre_api = _load_cadastre_api()
 
     cad = cadastre_api.query(city, town, section, landnos)
@@ -57,8 +66,11 @@ def run(city: str, town: str, section: str, landnos: list[str], village: str | N
             "error": "地籍查詢全部失敗，無法取得基地幾何，請先確認地段地號是否正確",
         }
 
-    es = ElandSession()
-    eland_res = es.query(city, town, section_name=section, village_name=village)
+    if exempt_json:
+        eland_res = exempt_source.query(city, town, sections or [section], json_path=exempt_json)
+    else:
+        es = ElandSession()
+        eland_res = es.query(city, town, section_name=section, village_name=village)
 
     findings = []
     for item in eland_res["items"]:
@@ -78,8 +90,18 @@ def run(city: str, town: str, section: str, landnos: list[str], village: str | N
             entry["overlay"] = None
         else:  # 應查
             layer = find_layer(item["level"], item["item_no"], item["sub_name"])
-            if layer is None or layer["kind"] == "none":
-                entry["action"] = f"應查，TGOS 查無對應圖資，需逕洽主管機關（{item['authority'] or '見 eland 查復機關欄'}）或至 eland 正式申請"
+            # 無遠端源（find_layer 查無或 kind=none）→ 若給了 env_root，改走單一登記表的本機源
+            # （山坡地/礦區/海岸管制區/地下水管制區等只有本機圖資的應查項）。
+            if (layer is None or layer.get("kind") == "none") and env_root:
+                lp, lrule = resolve_by_name(item["sub_name"], city, env_root=env_root)
+                if lp is not None:
+                    layer = {"fmt": "local_shp", "kind": "vector",
+                             "name": lrule.get("title") or item["sub_name"],
+                             "agency": item.get("authority") or "本機環境敏感圖資（快照）",
+                             "local_path": lp, "crs": lrule.get("crs", 3826),
+                             "encoding": lrule.get("encoding"), "source": "local"}
+            if layer is None or layer.get("kind") == "none":
+                entry["action"] = f"應查，查無對應圖資，需逕洽主管機關（{item['authority'] or '見查復機關欄'}）或正式申請查詢"
                 entry["overlay"] = None
             elif layer["kind"] == "zone_attribute":
                 per_parcel = []
@@ -116,14 +138,16 @@ def run(city: str, town: str, section: str, landnos: list[str], village: str | N
                         any_error = True
                     elif r.get("intersects"):
                         any_hit = True
+                src = layer.get("source", "remote")
+                srctag = "本機圖資（快照，可能較舊）" if src == "local" else "TGOS 現行圖資"
                 entry["overlay"] = {"layer": layer["name"], "agency": layer["agency"],
-                                     "kind": "vector", "per_parcel": per_parcel}
+                                     "kind": "vector", "source": src, "per_parcel": per_parcel}
                 if any_error:
-                    entry["action"] = "應查，TGOS 圖資套疊時發生錯誤，需人工確認，不可視為已排除"
+                    entry["action"] = f"應查，{srctag}套疊時發生錯誤，需人工確認，不可視為已排除"
                 elif any_hit:
-                    entry["action"] = "應查 → TGOS 圖資套疊判斷：有交集，很可能落入該敏感區"
+                    entry["action"] = f"應查 → {srctag}套疊判斷：有交集，很可能落入該敏感區"
                 else:
-                    entry["action"] = "應查 → TGOS 圖資套疊判斷：無交集（初步排除，仍建議正式查復確認）"
+                    entry["action"] = f"應查 → {srctag}套疊判斷：無交集（初步排除，仍建議正式查復確認）"
             else:  # wms
                 entry["overlay"] = {"layer": layer["name"], "agency": layer["agency"],
                                      "kind": "wms", "wms_url": layer["url"]}
@@ -151,8 +175,11 @@ def run(city: str, town: str, section: str, landnos: list[str], village: str | N
     return {
         "schema": SCHEMA,
         "cadastre": cad,
-        "eland": {"county_code": eland_res["county_code"], "town_code": eland_res["town_code"],
-                  "section_matched": eland_res["section_matched"]},
+        "初篩來源": eland_res.get("source", "線上 eland"),
+        "版本": eland_res.get("version"),
+        "eland": {"county_code": eland_res.get("county_code"),
+                  "town_code": eland_res.get("town_code"),
+                  "section_matched": eland_res.get("section_matched")},
         "findings": findings,
         "summary": summary,
     }
