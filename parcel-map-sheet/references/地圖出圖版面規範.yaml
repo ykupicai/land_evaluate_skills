@@ -1,0 +1,145 @@
+# 地圖出圖版面規範（主題套疊圖）
+# 依據: 兩張參考出圖逐一比對(指北針/比例尺/圖例之位置、樣式、字體、色票)歸納
+#   左圖: 使用分區圖(非都市使用分區—特定農業區)
+#   右圖: 使用地編定圖(農牧用地/交通用地/特定目的事業用地)
+# 用途: 規範各主題套疊圖(衛星影像底 + 半透明主題面 + 基地紅框)出圖時,
+#       指北針/比例尺/圖例三要素的擺放位置、樣式與字體。
+# 定位: 對應「簡報版面設計規範.yaml」content_split_page.right_image 槽位,
+#       即簡報右側滿版套疊圖的內部製圖標準。兩份規範並列使用。
+# 註:  座標以「地圖框」為基準用 0~1 正規化比例表示;pt 與 hex 為就參考圖目測估計,
+#      標註 (估) 者請於實際產線(QGIS 版面/maxmap)校準後回填確定值。
+
+meta:
+  name: ykupic-map-output-main-series
+  version: "0.1-draft"
+  based_on_samples: 2
+  frame:
+    aspect: 1.414           # A4 橫(297x210mm),與簡報 right_image_aspect 一致
+    origin: top-left        # 正規化座標原點:框左上;x 向右、y 向下,值域 0~1
+  base_map_source: "NLSC 正射影像(含 'NLSC 2023' 浮水印)"
+  font_note: >
+    圖面標註一律用「無襯線黑體」(思源黑體/Noto Sans TC/微軟正黑體擇一全案統一),
+    刻意有別於簡報本文的思源宋體(襯線);出圖字體與簡報本文字體分屬兩套,勿混用。
+
+# ---------------------------------------------------------------
+# 出圖字體與字級
+# ---------------------------------------------------------------
+typography:
+  font_family:
+    map_label_default: "思源黑體 / Noto Sans TC"   # 圖面所有標註預設(無襯線)
+    scale_number: "思源黑體 / Noto Sans TC"          # 比例尺數字,亦可用 Arial
+  scale:
+    legend_title:   { size_pt: 11, bold: true,  note: "圖例標題「圖例」(估)" }
+    legend_section: { size_pt: 10, bold: true,  note: "分類標題,如「非都市使用分區」「使用地編定」(估)" }
+    legend_item:    { size_pt: 9,  bold: false, note: "各類別/基地範圍項目文字(估)" }
+    scale_bar_text: { size_pt: 9,  bold: false, note: "比例尺 0/10/20 m 數字(估)" }
+    parcel_id:      { size_pt: 9,  bold: false, note: "基地範圍內地號標註,如「1085-1」,黑字(估)" }
+
+# ---------------------------------------------------------------
+# 三要素座標與樣式（0~1 正規化,以地圖框為基準）
+# ---------------------------------------------------------------
+elements:
+
+  north_arrow:
+    position: top-left
+    anchor: { x: 0.015, top: 0.02 }     # 置框最左、最上,略留邊(估)
+    size:   { height: 0.12, width: 0.03 }  # 窄長(估)
+    style: "線條/窄長三角式,箭頭朝正上;半黑半白或純線條,可帶小 N"
+    color: { fill_dark: "000000", fill_light: "FFFFFF", outline: "000000" }
+    note: "永遠置於比例尺左側,兩者同在左上角成組"
+
+  scale_bar:
+    position: top-left
+    anchor: { x: 0.03, top: 0.02 }       # 緊鄰指北針右側、同一高度(估)
+    total_width: 0.13                     # 涵蓋 0~20m 之圖上寬度,隨比例尺縮放(估)
+    style: "黑白分段(single box / alternating)"
+    segments: 2                           # 兩段
+    segment_unit_m: 10                    # 每段 10 公尺
+    ticks_label: ["0", "10", "20"]        # 刻度數字置於色段上方
+    units_suffix: "m"                     # 末刻度後加「m」→「20 m」
+    color: { bar_dark: "000000", bar_light: "FFFFFF", text: "000000" }
+    note: "刻度數字用無襯線黑體;段數/寬度依實際出圖比例尺自動決定,標籤維持 0/10/20 m 形式"
+
+  legend:
+    position: bottom-right
+    anchor: { right: 0.99, bottom: 0.98 } # 貼右下角略留邊(估)
+    box:
+      fill: "FFFFFF"
+      fill_opacity: 0.85                  # 白色半透明,壓在影像上仍可見(估)
+      border: { color: "808080", weight_pt: 0.5, note: "細灰框或無框,擇一全案統一" }
+      padding_in: 0.06
+    title: { text: "圖例", align: left, style: legend_title }
+    entry_layout:
+      order: ["基地範圍(固定首列)", "主題分類標題", "各類別色塊由上而下"]
+      swatch:
+        width: 0.018
+        height: 0.010
+        gap_to_label: 0.008
+        align: "色塊左、文字右,逐列對齊"
+      site_boundary_entry:
+        label: "基地範圍"
+        swatch_style: "紅色空心矩形(無填色,僅紅框)"
+        swatch_color: { fill: none, outline: "FF0000", outline_weight_pt: 1.5 }
+      category_entry:
+        swatch_style: "實色填滿小方塊"
+        note: "色塊顏色 = 該主題面圖層色(下 layers.theme_fill 之純色版,不含透明度)"
+    note: "圖例恆置右下;基地範圍永遠列在第一項,其下才是本圖主題的分類色塊"
+
+# ---------------------------------------------------------------
+# 圖層堆疊與樣式（由下而上）
+# ---------------------------------------------------------------
+layers:
+  aerial_base:
+    type: "NLSC 正射影像(RGB)"
+    note: "最底層滿版;右下角含 'NLSC 2023' 浮水印,保留不移除"
+
+  theme_fill:
+    type: "主題面(使用分區 / 使用地編定 等)"
+    opacity: 0.55                          # 半透明壓在影像上(估),使底圖現況仍可辨
+    outline: { color: "000000", weight_pt: 0.3, note: "分區/宗地界線細黑線" }
+    note: "同一張圖只上一種主題面;圖例色塊呈現其純色,圖面則為半透明疊合色"
+
+  site_boundary:
+    type: "基地範圍"
+    fill: none
+    outline: { color: "FF0000", weight_pt: 2.0 }   # 紅色空心粗框(估)
+    label: { field: "地號", color: "000000", style: parcel_id, position: "框內置中" }
+    note: "永遠紅框無填色,置於所有主題面之上,確保基地輪廓清晰;框內標地號"
+
+  parcel_lines:
+    type: "地籍界線(周邊宗地)"
+    color: "000000"
+    weight_pt: 0.3
+    label: none                            # 周邊宗地不上地號 label
+    note: "與簡報規範一致:周邊宗地只畫界線,不標地號,避免干擾"
+
+  watermark:
+    text: "NLSC 2023"
+    note: "來源浮水印,保留;不另加公司浮水印"
+
+# ---------------------------------------------------------------
+# 主題色票（依主題別,對應圖例色塊;hex 為目測估計待校準）
+# ---------------------------------------------------------------
+theme_palettes:
+  land_use_zone:            # 非都市使用分區
+    特定農業區: { hex: "C9D700", note: "螢光黃綠(估)" }
+    # 其餘分區(一般農業區/鄉村區/森林區…)沿用官方分區色系,依案補列
+  land_use_type:            # 使用地編定
+    農牧用地:         { hex: "F2E600", note: "亮黃(估)" }
+    交通用地:         { hex: "8C7B82", note: "灰褐/藕灰(估)" }
+    特定目的事業用地: { hex: "E23B3B", note: "紅(估)" }
+    # 其餘編定(甲乙丙丁建/林業/水利/古蹟保存…)依案補列
+  common:
+    基地範圍: { fill: none, outline: "FF0000", note: "跨所有主題固定" }
+
+# ---------------------------------------------------------------
+# 出圖慣例（製圖時一併遵守）
+# ---------------------------------------------------------------
+mapping_conventions:
+  - "指北針與比例尺固定成組置左上角;圖例固定置右下角,三者不互相遮擋、不壓到基地範圍"
+  - "圖例第一項恆為「基地範圍」(紅空心框),其下才排本圖主題分類色塊,由上而下"
+  - "基地範圍一律紅色空心粗框+框內地號,置於最上層;周邊宗地只畫細黑界線不標地號"
+  - "主題面採半透明壓在正射影像上,保留底圖現況可讀性;圖例色塊則呈純色(不透明)"
+  - "圖面所有文字用無襯線黑體,與簡報本文的思源宋體區隔"
+  - "比例尺數字維持 0/10/20 m 形式,末刻度加單位 m;段寬隨出圖比例尺自動縮放"
+  - "保留來源『NLSC 2023』浮水印,不移除、不覆蓋"

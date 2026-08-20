@@ -1,0 +1,205 @@
+# 簡報版面設計規範（主系列）
+# 依據: sample/ 內 5 份主系列簡報逐頁比對(文字/座標/顏色/縮圖)彙整
+#   20240311_臺南仁德保甲段資源回收評估.pptx（最早版,無章節數字)
+#   20241121_桃園觀音樹新段申請變更編定評估V2.pptx
+#   20250327臺南市南化區南化段露營區評估.pptx
+#   20250815-柳營科技工業區變更開發計畫(第6次變更)-初步評估.pptx
+#   20251027-桃園市觀音區樹新段99地號等6筆土地-V2.pptx（最新版,含定位小地圖)
+# 排除: 20250203-屏東長治寵物紀念園區.pptx（另一套簡化版式,不在本規範收錄範圍)
+# 用途: 供後續各案簡報製作時的版面設計依據。case_accent 類 token 逐案自訂,其餘 token 建議固定沿用。
+
+meta:
+  name: ykupic-briefing-deck-main-series
+  version: "1.0"
+  based_on_samples: 5
+  canvas_size: { width_in: 13.333, height_in: 7.5, aspect: "16:9" }
+  evolution_note: >
+    2024/03 仁德案為最早版,主題頁無「壹貳參」章節數字與色條,僅「大標+色塊副標」。
+    2024/11 觀音v1案起固定加入章節數字(壹/貳/參/肆/伍)+左側色條,成為之後案件的標準結構。
+    2025/10 觀音v2案在基地區位頁新增「縣市定位小地圖」,是目前最成熟版本。
+    新案製作時以「章節數字+色條」版本為準,定位小地圖建議一併採用。
+
+# ---------------------------------------------------------------
+# 設計 Token
+# ---------------------------------------------------------------
+tokens:
+  typography:
+    font_family:
+      heading_heavy: "思源宋體 Heavy"        # 亦見「思源宋體 TW Heavy」(2024/11後),擇一全案統一即可
+      heading_semibold: "思源宋體 SemiBold"   # 亦見「思源宋體 TW SemiBold」
+      body_default: "思源宋體"                # 內文預設,未特別指定字型的段落沿用此
+      date_western: "Times New Roman"         # 封面日期等純西式數字/年月常見字型
+    scale:
+      cover_title: { size_pt: 28, note: "案名較長時可縮至28pt;案名短(如柳營單行標題)可放大到40pt" }
+      section_main_title: { size_pt: 44, note: "頁首左側大標,如「基地條件」「相關法規及評估」「綜合評估」" }
+      section_topic_label: { size_pt: 28, note: "頁首大標右側的次標,說明本頁主題,如「基地區位」「環境敏感地區」" }
+      body_heading: { size_pt: 24, note: "頁內左欄小節標題,如「基地區位」(次於頁首)" }
+      body_text: { size_pt: 16, note: "左欄條列內文" }
+      map_callout_primary: { size_pt: 16, note: "地圖上紅字面積標註,如「評估基地範圍 2.4公頃」" }
+      map_callout_secondary: { size_pt: 10.5, note: "地圖上水路/道路名稱標註" }
+      table_body: { size_pt: 12, note: "表格內文,依欄寬彈性" }
+      table_legend: { size_pt: 11, note: "○△╳ 圖例文字,置頁首右側" }
+      footnote: { size_pt: 14, note: "頁尾提醒文字,如「建議事先溝通在地關係人團體…」" }
+      cover_date: { size_pt: 16 }
+
+  color:
+    base:
+      text_primary: "000000"        # 內文黑
+      background: "FFFFFF"          # 底色白,不用米色/灰底
+      divider_line: "000000"        # 頁首下方黑色分隔線
+      table_header_fill: "E7E6E6"   # 表格表頭淺灰(對應主題 BACKGROUND_2)
+      table_border: "808080"        # 表格細框線,約0.75pt灰
+    case_accent:
+      description: >
+        每案可自訂的「識別色」,用在頁首左側色條與封面裝飾。歷史案例色票(擇一或新調):
+      swatch_examples:
+        - { name: "深橄欖", hex: "242206", used_in: "20241121 桃園觀音v1" }
+        - { name: "灰綠",   hex: "4A8C7A", used_in: "20250327 南化露營區 / 20250815 柳營工業區" }
+        - { name: "黑(預設主題文字色)", hex: "000000", used_in: "20251027 桃園觀音v2" }
+    section_topic_label_color:
+      default: "A65149"    # 深磚紅/褐紅,5案中4案採用此色,為標準預設值
+      alt: "BF7417"        # 橘褐色,僅一案(2024/11)使用,屬個案變化非標準
+    map_annotation:
+      evaluation_basis_box_text: "FF0000"     # 紅字:基地範圍/面積標註(如「評估基地範圍 2.4公頃」)
+      evaluation_basis_box_fill_dark: "000000_alpha"  # 深色半透明底,文字改用下列黃色
+      evaluation_basis_label_on_dark: "FFFF00"        # 黃字:深色底框上的基地代號+面積(如「評估基地1 5.7205公頃」)
+      hydrology_label: "00FFFF"                        # 青色:溪流/排水/水路名稱直接標注在影像上
+      place_label_box: { fill: "000000", text: "FFFFFF" }  # 縣市/工業區名稱:黑底白字標籤框
+    caution_text: "E94541"     # 或 C00000,頁尾/表末提醒文字用紅
+    cover_footer_line:
+      thick: { color: "1F3864", weight_pt: 2.5 }   # 深藍粗線
+      thin:  { color: "1F3864", weight_pt: 1.0 }   # 深藍細線,兩線相疊置於封面底部
+
+  spacing:
+    slide_margin_in: 0.12          # 內容頁左右安全邊界(對齊分隔線起訖)
+    header_zone_height_in: 0.87    # 頁首(章節數字+主標+副標+分隔線)佔用高度
+    left_column_width_in: 3.7      # 主題頁左欄文字寬度區間(3.7~4.3")
+    right_image_width_in: 8.8      # 主題頁右側滿版圖寬度區間(8.8~9.4")
+    right_image_aspect: 1.414      # 約A4橫式比例(寬高比)
+
+  bullets:
+    body_list_marker: "■"          # 早期案(仁德/柳營)採方塊;亦見圓點「•」(2024/11觀音v1) — 建議全案統一擇一
+    note: "務必使用 PowerPoint 項目符號功能(buChar)產生,不要手動打字元,否則換行對不齊"
+
+  table:
+    feasibility_symbols:
+      "○": "具可行性"
+      "△": "有條件辦理(Δ亦可,建議統一輸出△)"
+      "╳": "不具可行性(× 亦可,建議統一輸出╳)"
+    legend_text_template: "○具可行性；△有條件辦理；╳不具可行性"
+    legend_position: "頁首右側,與章節數字列同高"
+    header_row: { fill: token.table_header_fill, bold: true, align: center }
+    body_row: { fill: "FFFFFF", align: "left(文字)/center(數字面積)" }
+    total_row: { label: ["合計", "小計"], bold: true }
+    area_table_footnote: "※實際面積依土地謄本為準"
+
+# ---------------------------------------------------------------
+# 共用元件座標(單位: 英吋, 以 13.333x7.5 畫布為準)
+# ---------------------------------------------------------------
+components:
+  header_bar:
+    chapter_char:      { left: 0.00, top: 0.056, width: 1.014, height: 0.841, font: heading_heavy, size_pt: 44, color: text_primary }
+    accent_bar:         { left: 0.915, top: 0.108, width: 0.139, height: 0.736, fill: case_accent }
+    section_main_title: { left: 1.054, top: 0.056, width: "auto(2.7~4.7)", height: 0.841, font: heading_heavy, size_pt: 44, color: text_primary }
+    section_topic_label:{ left: "緊接main_title右側", top: 0.294, width: "auto", height: 0.572, font: heading_semibold, size_pt: 28, color: section_topic_label_color.default }
+    divider_line:       { left: 0.121, top: 0.866, width: 12.891, height: 0, color: divider_line, weight_pt: 0.75 }
+    page_number:        { left: "~10.1~12.6(右側)", top: 0.295, width: "0.5~3.0", height: 0.399, align: right, font: heading_heavy }
+
+  cover:
+    title_block:  { left: 0.0, top: "2.06~2.48", width: "11~13.333(近全寬)", height: "1.0~1.6", align: center, font: heading_heavy, size_pt: "28~40(視標題長度)" }
+    date_block:   { left: "3.7~5.9", top: "6.98~7.03", width: "1.5~5.9", height: "0.37~0.40", align: center, size_pt: 16 }
+    footer_lines: { left: 0.38, top: 6.938, width: 12.602, style: cover_footer_line }
+    logo_group:   { left: "4.85~5.28", top: "5.94~6.09", width: "2.97~3.63", height: "0.71~0.86", align: "水平置中,位於雙線上方", note: "公司中英文名+標誌;2024/03最早案無此元素,2024/11後為標準配置" }
+
+  content_split_page:
+    description: "主題頁標準版型:左欄文字/表格資訊卡,右側滿版套疊圖"
+    left_column: { left: 0.12, top: "0.95~1.97(依有無次標題)", width: "3.7~4.3", body: "■條列 或 資訊卡(白底細框)" }
+    locator_mini_map:
+      note: "2025/10版新增,左欄下方縣市定位小地圖(灰階縣市輪廓圖+紅框標示所在行政區)"
+      recommended: true
+    right_image:  { left: "3.9~4.35", top: "0.86~1.1", width: "8.8~9.4", height: "6.2~6.6" }
+    map_legend_box: { position: "右下角", fill: "FFFFFF/淺灰", content: "比例尺/指北針/圖例色塊" }
+
+  content_fulltable_page:
+    description: "全寬表格頁版型:用於綜合評估、法令檢核等內容較多無法搭配大圖的頁面"
+    intro_text: { left: 0.12, top: "1.14~1.39", width: 12.9, note: "表格前的1~2行結論句,不是條列" }
+    table:      { left: "0.12~0.18", top: "1.14~2.47(依有無intro_text)", width: "12.9~12.95", height: "auto(依列數)" }
+    footnote:   { left: 0.12, top: "~6.75(貼近頁尾)", width: 9.3, color: caution_text, size_pt: 14 }
+
+  ending_page:
+    content: "「簡報結束　敬請指教」置中 + 公司logo(衍古開發顧問有限公司 / Y.KU Planning Intl. Co.)"
+    background: "純白,無其他裝飾元素"
+
+# ---------------------------------------------------------------
+# 頁面結構清單(常見頁序模板,供新案排版大綱參考;非固定頁數,依案件內容增減)
+# ---------------------------------------------------------------
+page_structure_template:
+  - id: cover
+    title: "封面"
+    layout: cover
+    content: "案名(基地座落+範圍+評估類型) / 日期 / 公司Logo"
+
+  - id: site_location
+    title: "基地區位"
+    layout: content_split_page
+    content: "縣市定位小地圖 + 衛星圖套紅框基地範圍 + 面積標註(紅字/黃字) + 鄰近地標條列"
+
+  - id: site_boundary_table
+    title: "基地位置/範圍"
+    layout: content_split_page
+    content: "地籍表(地段/地號/權屬/面積/使用情形,末列合計) + 地籍圖套疊"
+
+  - id: land_use_zone
+    title: "土地使用分區"
+    layout: content_split_page
+    content: "分區表 + 使用分區圖"
+
+  - id: land_use_type
+    title: "土地使用地編定"
+    layout: content_split_page
+    content: "編定類別表 + 使用地編定圖"
+
+  - id: functional_zone
+    title: "國土功能分區(草案)"
+    layout: content_split_page
+    content: "功能分區表(以公告為準免責句) + 功能分區圖"
+
+  - id: current_use
+    title: "土地利用情形/現況"
+    layout: content_split_page
+    content: "現況街景照片編號對照 + 國土利用調查圖 + 周邊道路描述"
+
+  - id: env_sensitive
+    title: "環境敏感地區"
+    layout: content_split_page
+    content: "第一級/第二級逐項列點(每項可獨立成頁,視項目多寡) + 套疊圖"
+
+  - id: legal_evaluation
+    title: "相關法規及評估"
+    layout: content_fulltable_page
+    content: "評估項目｜相關法規｜條文內容｜基地情形｜評估(○△╳) 表,可依可行路線(容許/變更編定/開發許可)分頁"
+
+  - id: recommendation
+    title: "建議方案/其他可行性比較"
+    layout: content_fulltable_page
+    content: "多方案並列比較表"
+
+  - id: appendix
+    title: "附件(選用)"
+    layout: content_split_page
+    content: "審查作業要點掃描件等佐證文件"
+
+  - id: ending
+    title: "結尾"
+    layout: ending_page
+
+# ---------------------------------------------------------------
+# 內容撰寫慣例(與版面連動,製作簡報文字時一併遵守)
+# ---------------------------------------------------------------
+writing_conventions:
+  - "地籍/面積表一律列到「合計」列,並在表下加註「※實際面積依土地謄本為準」"
+  - "可行性一律用 ○/△/╳ 三態符號,表首或頁首附圖例說明"
+  - "程序性提醒(如建議溝通在地關係人、函詢主管機關)一律用紅字(E94541/C00000)獨立於表格外"
+  - "地圖上基地面積標註用紅字或黃字(深色底)醒目呈現,水路名稱用青色小字直接標於水體上"
+  - "每主題頁只放「本頁主題的實際成果圖」,不可用區位圖或其他主題圖充數"
+  - "章節數字(壹貳參肆伍)僅用於一級主題轉換,同一章節內的子頁不重複顯示章節字,只換副標"

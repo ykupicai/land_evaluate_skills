@@ -8,6 +8,11 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
 把三支子 skill 依序串成一條產線。**本 skill 只做統籌與交接**,每一段的細節在各子 skill。
 遇到該段就呼叫該子 skill,不要在這裡重造流程。
 
+★**版面權威規範(2026-08-19 定案)**:出圖版面以 `parcel-map-sheet/references/地圖出圖版面規範.yaml`
+為準(v2:滿版地圖+左上指北針比例尺+右下圖例框);簡報版面以
+`parcel-briefing-deck/references/簡報版面設計規範.yaml` 為準(v2:純白底+思源宋體+章節色條)。
+兩者皆已落成產線引擎(`大量圖資轉換工具/scripts/build_layout.py`、`deck_layout.py`),改版面改引擎一次即全案生效。
+
 ## ⚠️ 執行紀律(所有模型適用;Opus/Sonnet 接手時尤其不可違反)
 
 1. **硬閘門必過**:每段交接跑 `scripts/pipeline_check.py` 對應子命令(下方各段標註),
