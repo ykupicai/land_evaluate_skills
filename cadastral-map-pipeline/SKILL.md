@@ -48,6 +48,9 @@ description: 地籍案場「土地清冊 → 官方地籍圖資 → 帶屬性 sh
 
 ```
 土地清冊（縣市/鄉鎮/地段/地號）
+  │  ※ 入口也可是「一個座標／Google Maps 網址」→ ⓪a(反查) latlon_to_parcel 反查成
+  │    現行地段地號後接同一條流（skill landmark-to-parcel；run_case.py --latlon <網址>
+  │    --case <案名>，單點單筆、反查失敗硬停）——當你只有地標、不知道地號時走這個
   │  ⓪a cadastre-check ＋ MOI_API_039   ★免登入先跑一輪（2026-08-02 納入）
   ▼     地號存在性＋重測改號自動追蹤、基地幾何、使分/使類、登記面積、**權屬**
   │     → scripts/cadastre_fetch.py fetch（權屬自動帶）／scripts/public_land.py
