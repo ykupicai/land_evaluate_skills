@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# 獨立 repo：ykupicai/document_skills
+公文送件/
