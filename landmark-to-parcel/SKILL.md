@@ -24,13 +24,13 @@ description: Use when you have a Google Maps URL, short link (maps.app.goo.gl), 
 
 ```bash
 # 大量圖資轉換工具/ 專案根目錄下，用 QGIS python（PyQGIS，PowerShell 呼叫）
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts/latlon_to_parcel.py "<Google Maps 網址>"
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts/latlon_to_parcel.py --lat 22.924 --lon 120.347
+.\scripts\qgis_python.ps1 scripts/latlon_to_parcel.py "<Google Maps 網址>"
+.\scripts\qgis_python.ps1 scripts/latlon_to_parcel.py --lat 22.924 --lon 120.347
 # 順便寫基地.shp（可接出圖）：加 --out outputs/<案>/cadastre
 # JSON 輸出：加 --json ；其餘旗標見 --help
 
 # 一鍵接產線（反查→基地→周邊地籍→出圖，單點單筆，--case 必填）：
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts/run_case.py --latlon "<網址>" --case <案名>
+.\scripts\qgis_python.ps1 scripts/run_case.py --latlon "<網址>" --case <案名>
 ```
 
 引擎流程：展開網址抓地標座標 → WGS84→EPSG:3826 → 農業部 identify 定縣市 →

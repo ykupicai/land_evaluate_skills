@@ -12,7 +12,7 @@ description: 以 QGIS 產出地籍/宗地案場的 A4 橫式主題成品圖(出�
 `scripts/build_layout.py`(已在真實官田資料端到端算圖驗證)。**用 QGIS 內建 python 執行**:
 
 ```powershell
-& "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" your_driver.py
+$env:PYTHONNOUSERSITE=1; & "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" your_driver.py
 ```
 
 ## 版面規格(v2 定案，2026-08-19：改以「地圖出圖版面規範.yaml」為權威)
@@ -94,7 +94,7 @@ A4 橫式 297×210mm、EPSG:3826、匯出 300 DPI:
 `05_出圖清單` 備註欄。`overlay_placement.py`／`build_layout.py` 已 vendor 到該案 `scripts/`。
 
 ```powershell
-& "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" scripts\make_maps.py <案名> --layout maxmap
+.\scripts\qgis_python.ps1 scripts\make_maps.py <案名> --layout maxmap
 ```
 
 非破壞:maxmap 成果另存 `圖檔_maxmap/`、`05_出圖清單_maxmap.*`、`<案名>_maxmap.qgz`,不動原

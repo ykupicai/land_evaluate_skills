@@ -151,7 +151,7 @@ ArcGIS REST identify API 逐筆查證（臺南市範例：`up.tainan.gov.tw`，�
 
 - **①的登入**:`ngis.nlma.gov.tw` 帳密＋圖形驗證碼**由使用者本人輸入**(安全規則:agent
   不可代填、不可解驗證碼)。開好登入頁請使用者完成,回覆「好了」再續。
-- **③的環境**:出圖須用 **QGIS 內建 python**(`python-qgis-ltr.bat`);正射套疊/國土利用
+- **③的環境**:出圖須用 **QGIS 內建 python**（一律經專案根目錄的 `.\scripts\qgis_python.ps1` 呼叫；直接執行 python-qgis-ltr.bat 會讀到使用者 site-packages 的 numpy 2.x，底圖靜默消失）;正射套疊/國土利用
   需連 NLSC WMTS(未快取時)、臨路判定需 ②c 臨路評估產物。缺資料的主題單張標失敗續跑。
 
 其餘全自動。
@@ -396,7 +396,7 @@ IoU ≥99.9% 且面積差 ≤0.1% 才回報通過；有實質差異一律以平�
 本機面圖層並在不一致時以 nluz 覆蓋出圖**、**依案型決定查不查鄰地**。
 
 ```powershell
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\nluz_landzone.py --case <案名> [--limit N]
+.\scripts\qgis_python.ps1 scripts\nluz_landzone.py --case <案名> [--limit N]
 ```
 
 | 案型 | 查詢對象 | 理由 |
@@ -477,7 +477,7 @@ python <skills>/shp-xls-area-join/scripts/area_join_shp.py <資料夾或 zip> --
 
 ### ②c 臨路評估(產線內建;2026-07-26 起不再相依外部 fishpv)
 ```powershell
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\road_access.py --joined <joined.shp> `
+.\scripts\qgis_python.ps1 scripts\road_access.py --joined <joined.shp> `
     --sitemap <案>\案場定義\sitemap.csv --out <案>\臨路評估
 ```
 國土利用 LUIMAP 圖磚 → 最近色分類向量化 → 逐宗基地**臨路三態**(直接臨路≤0.5m/
@@ -570,7 +570,7 @@ python -X utf8 scripts\greenbelt_ratio.py --joined <申請範圍.shp 或 面積j
 python -X utf8 scripts\greenbelt_triangles.py --joined <申請範圍.shp> --retained <保留_道路.shp> --out <案>
 
 # ⓸ 綠帶配置圖（＝③d 補充主題圖之一；正射底，隔離設施／隔離綠帶分色並列圖例）
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\make_extra_maps.py --joined <申請範圍.shp> --case <案> --theme 隔離綠帶
+.\scripts\qgis_python.ps1 scripts\make_extra_maps.py --joined <申請範圍.shp> --case <案> --theme 隔離綠帶
 ```
 
 ⚠ ⓸ 是**出圖步驟**，需 QGIS 內建 python；跑在 ③ 那一段也可以（它就是 ③d 補充主題圖的
@@ -623,7 +623,7 @@ python -X utf8 scripts\greenbelt_triangles.py --joined <申請範圍.shp> --reta
   的情況下重出圖;圖磚快取仍共用原 `底圖\_tilecache`。
 在 `大量圖資轉換工具/` 下,把基地(＋周邊/功能分區)備進案場結構後:
 ```powershell
-& "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" scripts\make_maps.py <案名> --layout maxmap
+.\scripts\qgis_python.ps1 scripts\make_maps.py <案名> --layout maxmap
 ```
 - 版面固定為**最大化地圖＋自動避讓角落疊圖＋右欄只留圖例**;周邊不上 label;涵蓋地號收合為
   「段 第一筆 等 N 筆」;主題免責說明寫入 `05_出圖清單_maxmap` 備註欄。
@@ -657,7 +657,7 @@ python -X utf8 scripts\greenbelt_triangles.py --joined <申請範圍.shp> --reta
 ### ③c 環境敏感套疊圖(★2026-07-29 新增;簡報第6頁必用)
 簡報第6頁的圖**必須是實際套疊到的敏感圖層**,不可拿國土利用調查圖充數(實際犯過)。
 ```powershell
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\make_env_map.py `
+.\scripts\qgis_python.ps1 scripts\make_env_map.py `
     --joined <②joined.shp> --case <案名> [--basemap-dir <避鎖用資料夾>]
 ```
 讀 `環境敏感套疊.csv`(①b 產物)挑出**套疊面積>0** 的圖層 → 依內建登錄表解析到本機
@@ -694,7 +694,7 @@ maxmap 版面**出 `圖檔_maxmap/001_<案名>_環境敏感.png`,並產
 | `灌排水道` | 30 公尺內渠道加粗標名稱與管理工作站 | 農業用地變更案（要點§5①二 不同意事由） |
 
 ```powershell
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\make_extra_maps.py `
+.\scripts\qgis_python.ps1 scripts\make_extra_maps.py `
     --joined <申請範圍.shp 或 ②joined.shp> --case <案名> --theme 隔離綠帶
 ```
 ⚠ **部分變更編定案的 `--joined` 要給 `申請範圍.shp`**，給原地號會把已分割出去的道路
@@ -705,7 +705,7 @@ maxmap 版面**出 `圖檔_maxmap/001_<案名>_環境敏感.png`,並產
 **★ 權屬主題的定案做法（使用者 2026-08-07 定案，之後一律照此）**：
 
 ```powershell
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\make_extra_maps.py `
+.\scripts\qgis_python.ps1 scripts\make_extra_maps.py `
     --joined <案>\cadastre\基地.shp --case <案名> --theme 權屬
 ```
 1. **自動連 `<案>/cadastre/鄰地.shp` 一起畫**（⓪a′ 產出；`--neighbours` 可另指定）。
@@ -726,7 +726,7 @@ maxmap 版面**出 `圖檔_maxmap/001_<案名>_環境敏感.png`,並產
 ### ③e 區位圖(★簡報第2頁必用;2026-07-29 新增，2026-08-06 外擴基準改版)
 ```powershell
 python -X utf8 scripts\road_network.py --joined <案>\cadastre\基地.shp --out <案>
-& "<QGIS>\bin\python-qgis-ltr.bat" scripts\make_locality_map.py `
+.\scripts\qgis_python.ps1 scripts\make_locality_map.py `
     --joined <②joined.shp> --case <案名> --sites <案>\臨路評估\sites.shp
 ```
 圖層順序（★2026-07-29 使用者定案；QGIS `setLayers` **清單第一個畫在最上層**）：

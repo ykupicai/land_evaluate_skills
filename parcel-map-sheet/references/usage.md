@@ -5,7 +5,7 @@
 必須用 **QGIS 內建 python**(含 PyQGIS)，不是系統 python：
 
 ```powershell
-& "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" your_driver.py
+$env:PYTHONNOUSERSITE=1; & "C:\Program Files\QGIS 3.40.12\bin\python-qgis-ltr.bat" your_driver.py
 ```
 
 `scripts/overlay_placement.py` 是純幾何、無 QGIS 相依，可用系統 python + shapely 單獨測試
