@@ -69,6 +69,8 @@ description: Use when you have a Google Maps URL, short link (maps.app.goo.gl), 
 ## 依賴
 
 - 本專案 `大量圖資轉換工具/scripts/latlon_to_parcel.py`（引擎）與 `地籍圖資/<縣市>.shp`（本機快照）。
+- **本機快照缺失時**（NAS 未掛、新機器）：引擎自動退回農業部線上框查（`online_reverse`，點周圍 ±40 m 點面相交），
+  仍可反查現行地號；代價是無本機候選交叉、**不回 14 碼與登記日期**，警告欄會註明「改用線上框查」。
 - skill `cadastre-check` 的 `api`/`moa` 模組（農業部 coagis 正查＋縣市界 identify；免登入）。
 - 出圖接 `make_maps.py --trust-shp <基地.shp>`（見 skill `cadastral-map-pipeline`）。
 
