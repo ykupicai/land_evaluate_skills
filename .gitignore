@@ -4,3 +4,6 @@ __pycache__/
 
 # 獨立 repo：ykupicai/document_skills
 公文送件/
+
+# Claude 帳號同步下來的 skills 快取（UUID 資料夾），不進版控
+synced/

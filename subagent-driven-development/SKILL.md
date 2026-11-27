@@ -13,7 +13,7 @@ Execute plan by dispatching a fresh implementer subagent per task, a task review
 
 **Narration:** between tool calls, narrate at most one short line — the ledger and the tool results carry the record.
 
-**Continuous execution:** Do not pause to check in with your human partner between tasks. The only reasons to stop: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time.
+**Continuous execution:** Do not pause to check in with your human partner between tasks. The only reasons to stop: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. Don't stop to ask "Should I continue?" — put status notes in the same message as your next action.
 
 ## When to Use
 
