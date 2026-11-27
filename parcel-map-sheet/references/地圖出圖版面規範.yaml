@@ -63,6 +63,9 @@ elements:
   legend:
     position: bottom-right
     anchor: { right: 0.99, bottom: 0.98 } # 貼右下角略留邊(估)
+    inset_mm: 5.0   # ★產線定案(2026-08-19)：圖例框「右下角」離圖框右下邊界 5mm；
+                    #   實作 build_layout.py LEGEND_INSET_MM=5.0，用 LowerRight 參考點
+                    #   直接釘位（勿再用 sizeWithUnits 反推左上角，縮框後取值不準會浮內側）
     box:
       fill: "FFFFFF"
       fill_opacity: 0.85                  # 白色半透明,壓在影像上仍可見(估)

@@ -2,7 +2,7 @@
 """QGIS 版面組裝：最大化地圖 A4 橫式 ＋ 自動避讓角落疊圖 ＋ 只留圖例的右欄。
 
 必須用 QGIS 內建 python 執行（PowerShell）：
-  & "C:\\Program Files\\QGIS 3.40.12\\bin\\python-qgis-ltr.bat" your_driver.py
+  .\\scripts\\qgis_python.ps1 your_driver.py
 
 角落擺放決策委由 scripts/overlay_placement.py（純幾何、已單元測試）計算；本檔只負責
 把決策落成 QgsLayoutItem。與參考案 大量圖資轉換工具/scripts/make_maps.py 的 build_layout
@@ -24,10 +24,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import overlay_placement as op
 
+# 圖例鎖右下、離圖框邊界的內縮距（使用者定案 2026-08-19：5mm；有別於其他疊圖的 3mm）
+LEGEND_INSET_MM = 5.0
+# 圖例專用符號登錄表 {圖層 id: QgsSymbol}；呼叫端（如 make_env_map）登錄，build_sheet_layout 套用
+LEGEND_SYMBOLS: dict = {}
+
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsGeometry,
-    QgsLayerTree,
+    QgsLayoutItem,
     QgsLayoutItemLabel,
     QgsLayoutItemLegend,
     QgsLayoutItemMap,
@@ -202,14 +207,18 @@ def build_sheet_layout(project, name, layers, legend_layers,
     # 4) 圖例：右下方框（YAML 定案，取代右欄）；依地圖範圍動態過濾、長標籤依「／」換行
     leg = QgsLayoutItemLegend(layout)
     leg.setLinkedMap(m)
+    # ⚠ 圖例清單要改在圖例「自己的」自訂樹上（setAutoUpdateModel(False) 時 QGIS 會
+    #   複製一棵存在圖例內部），**不可另建 QgsLayerTree() 再 setRootGroup 換進去**：
+    #   那樣畫圖時有效，但存 .qgz 時 QGIS 序列化的是圖例內部那棵（空的），重開後圖例
+    #   退回「列出整個專案圖層樹」——多出群組標題、光柵波段，原本挑好的項目不見
+    #   （2026-09-24 阿里山案重開 qgz 實見；內湖案 make_maps 產的 qgz 同樣受害）。
     leg.setAutoUpdateModel(False)
-    root = QgsLayerTree()
-    keep_alive.append(root)
+    root = leg.model().rootGroup()
+    root.removeAllChildren()
     for lyr in legend_layers:
         node = root.addLayer(lyr)
         if lyr.name() in legend_hide_title:
             QgsLegendRenderer.setNodeLegendStyle(node, QgsLegendStyle.Hidden)
-    leg.model().setRootGroup(root)
     # 光柵圖例會自動多一行「Band 1 (Gray)」（波段名）——對讀者毫無意義，又在只有
     # 45mm 寬的右欄白占一行。逐層挑掉該節點（2026-08-04 坡度分段圖實需）。
     for lyr in legend_layers:
@@ -224,6 +233,15 @@ def build_sheet_layout(project, name, layers, legend_layers,
         if 0 < len(keep_idx) < len(nodes):
             QgsMapLayerLegendUtils.setLegendNodeOrder(node, keep_idx)
             leg.model().refreshLayerLegend(node)
+    # 圖例另用的符號（{圖層 id: QgsSymbol}，呼叫端登錄）：圖面紋理間距大於圖例小方格時，
+    #   方格內看不到任何點（2026-10-20 阿里山環敏圖：點紋 12mm、方格只有約 8mm），
+    #   改用同樣式、較密的符號畫圖例。存成圖層樹節點屬性，qgz 重開仍在。
+    for lid, lsym in LEGEND_SYMBOLS.items():
+        node = root.findLayer(lid)
+        if node is None:
+            continue
+        QgsMapLayerLegendUtils.setLegendNodeCustomSymbol(node, 0, lsym)
+        leg.model().refreshLayerLegend(node)
     leg.setLegendFilterByMapEnabled(True)
     leg.setTitle("圖例")
     try:
@@ -264,10 +282,14 @@ def build_sheet_layout(project, name, layers, legend_layers,
     layout.addLayoutItem(leg)
     try:
         leg.adjustBoxSize()
-        sz = leg.sizeWithUnits()
-        bx = op.MAP2_X + op.MAP2_W - op.OVERLAY_INSET2 - sz.width()
-        by = op.MAP2_Y + op.MAP2_H - op.OVERLAY_INSET2 - sz.height()
-        leg.attemptMove(QgsLayoutPoint(bx, by, QgsUnitTypes.LayoutMillimeters))
+        # 圖例框「右下角」直接釘在離圖框右下 5mm（使用者定案 2026-08-19，參考圖）。
+        # 用 LowerRight 參考點＋attemptMove，不依賴 sizeWithUnits 反推左上角——先前
+        # 反推做法會因縮框後尺寸取值不準，讓圖例浮在圖框中間偏內側（右/下各留約 20mm）。
+        leg.setReferencePoint(QgsLayoutItem.LowerRight)
+        leg.attemptMove(QgsLayoutPoint(
+            op.MAP2_X + op.MAP2_W - LEGEND_INSET_MM,
+            op.MAP2_Y + op.MAP2_H - LEGEND_INSET_MM,
+            QgsUnitTypes.LayoutMillimeters))
     except Exception:
         pass
 
